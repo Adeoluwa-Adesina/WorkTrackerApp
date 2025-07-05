@@ -1,0 +1,25 @@
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual Environment
+work_tracker_venv/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Application specific generated files
+app.log        # Your application log file
+deep_work.db   # Your local SQLite database
+main.spec      # PyInstaller spec file (can be regenerated)
+*.exe          # Windows executables (if you build with PyInstaller)
+*.app          # macOS application bundles (if you build with PyInstaller)
+dist/          # PyInstaller distribution folder
+build/         # PyInstaller build folder
