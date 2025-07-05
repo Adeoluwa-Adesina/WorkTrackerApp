@@ -9,10 +9,21 @@ import logging
 import pystray
 import threading
 import queue
+import json # For parsing supabase config
+import uuid # For generating anonymous user IDs if needed before Supabase auth
+
+# Import Supabase client
+try:
+    from supabase import create_client, Client
+    SUPABASE_AVAILABLE = True
+except ImportError:
+    logging.error("Supabase Python library not found. Cloud sync functionality will be disabled. Please install it using 'pip install supabase-py'.")
+    SUPABASE_AVAILABLE = False
+
+
 from ttkthemes import ThemedTk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import ttk, messagebox, simpledialog, filedialog
-
 
 # Configure logging
 logging.basicConfig(filename='app.log', level=logging.INFO,
@@ -29,8 +40,7 @@ try:
     from PIL import Image, ImageDraw, ImageFont
     PIL_AVAILABLE = True
 except ImportError:
-    logging.error(
-        "Pillow (PIL) library not found. Tray icon functionality will be disabled. Please install it using 'pip install Pillow'.")
+    logging.error("Pillow (PIL) library not found. Tray icon functionality will be disabled. Please install it using 'pip install Pillow'.")
 
 
 class WorkTracker:
@@ -42,6 +52,11 @@ class WorkTracker:
         self.db_queue = queue.Queue()
         self.db_thread = threading.Thread(target=self.db_worker, daemon=True)
         self.db_thread.start()
+
+        # Supabase setup for cloud sync
+        self.supabase_client = None
+        self.supabase_user_id = None # Supabase user ID (from anonymous sign-in)
+        self.display_name = None # User-set display name for leaderboard
 
         # root window settings
         self.root = root
@@ -59,14 +74,13 @@ class WorkTracker:
         self.is_running = False
         self.elapsed_time = 0
         self.stopwatch_running = False
-        self.is_paused = False  # New state for pause functionality
-        self.pause_start_time = None  # To record when pause began
+        self.is_paused = False
+        self.pause_start_time = None
 
         # Tray icon related attributes
         self.tray_icon = None
         self.base_tray_image = None
-        self.tray_font = None
-        self.last_tray_update_time = datetime.datetime.now()  # To control update frequency
+        self.last_tray_update_time = datetime.datetime.now()
 
         top_frame = ttk.Frame(root, padding=10, style="TFrame")
         top_frame.pack(fill="x")
@@ -86,10 +100,9 @@ class WorkTracker:
         # Categories
         self.category_var = tk.StringVar(root)
         self.category_dropdown = ttk.Combobox(
-            top_frame, textvariable=self.category_var)  # Values set after DB init
+            top_frame, textvariable=self.category_var)
         self.category_dropdown.grid(row=0, column=1, padx=5, pady=5)
-        self.category_dropdown.bind(
-            "<<ComboboxSelected>>", self.on_category_select)  # New binding
+        self.category_dropdown.bind("<<ComboboxSelected>>", self.on_category_select)
 
         self.add_category_button = ttk.Button(
             top_frame, text="Add Category", command=self.add_category)
@@ -101,8 +114,8 @@ class WorkTracker:
             top_frame, text="Rename Category", command=self.rename_category)
         self.rename_category_button.grid(row=0, column=4, padx=5, pady=5)
 
-        # Initialize categories after db_worker has started
-        self.root.after(100, self.initial_db_setup)
+        # Initialize local DB, then categories and Supabase
+        self.root.after(100, self.initial_setup)
 
         # Tasks
         self.task_label = ttk.Label(root, text="Task: ")
@@ -129,8 +142,7 @@ class WorkTracker:
         # History
         self.history_button = ttk.Button(
             button_frame, text="History", command=self.show_history)
-        self.history_button.grid(
-            row=0, column=3, padx=5, pady=5)  # Adjusted column
+        self.history_button.grid(row=0, column=3, padx=5, pady=5)
 
         # Statistics button
         self.statistics_button = ttk.Button(
@@ -143,9 +155,9 @@ class WorkTracker:
 
         settings_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Settings", menu=settings_menu)
-        settings_menu.add_command(
-            label="Set Default Category", command=self.open_default_category_settings)
-        # Added Exit to menubar
+        settings_menu.add_command(label="Set Default Category", command=self.open_default_category_settings)
+        settings_menu.add_command(label="Set Display Name", command=self.open_display_name_settings)
+        settings_menu.add_command(label="Sync Daily Stats to Cloud", command=self.sync_daily_stats_to_cloud)
         self.menubar.add_command(label="Exit", command=self.exit_app)
 
         self.create_tray_icon()
@@ -153,17 +165,108 @@ class WorkTracker:
 
         logging.info("WorkTracker application initialized.")
 
-    def initial_db_setup(self):
-        """Called after a short delay to ensure DB thread is ready."""
+    def initial_setup(self):
+        """Called after a short delay to ensure DB thread is ready and Supabase is initialized."""
         user_home = os.path.expanduser("~")
         app_dir = os.path.join(user_home, "WorkTracker")
         if not os.path.exists(app_dir):
             os.makedirs(app_dir)
         db_path = os.path.join(app_dir, "deep_work.db")
         self.db_queue.put(('INIT_DB', (db_path,), None, None))
-        # Schedule category dropdown update and then default category load
+
+        # Initialize Supabase client
+        self.root.after(150, self._initialize_supabase_client) # Give DB thread a head start
+
+        # Schedule category dropdown update and then default category load and display name load
         self.root.after(200, self.update_category_dropdown)
         self.root.after(300, self.load_default_category_setting)
+        self.root.after(400, self.load_display_name_setting)
+
+
+    def _initialize_supabase_client(self):
+        """Initializes Supabase client and signs in anonymously."""
+        if not SUPABASE_AVAILABLE:
+            logging.warning("Supabase client not initialized: Library not available.")
+            return
+
+        try:
+            # Get Supabase URL and Key from environment variables
+            supabase_url = os.environ.get('SUPABASE_URL')
+            supabase_key = os.environ.get('SUPABASE_KEY')
+
+            if not supabase_url or not supabase_key:
+                logging.error("SUPABASE_URL or SUPABASE_KEY environment variables not set. Cloud sync will be unavailable.")
+                messagebox.showwarning("Cloud Sync Error", "Supabase environment variables (SUPABASE_URL, SUPABASE_KEY) not set. Cloud sync features will be unavailable.")
+                return
+
+            self.supabase_client: Client = create_client(supabase_url, supabase_key)
+
+            # Attempt to sign in anonymously
+            # First, check if a Supabase user ID is already stored locally
+            stored_user_id = self.send_db_command('get_setting', ('supabase_user_id',), expect_result=True)
+
+            if stored_user_id:
+                # Attempt to retrieve session for the stored user ID
+                # Note: supabase-py doesn't have a direct 'get_session_by_id' for anonymous.
+                # A better approach might be to store the full access_token and refresh_token
+                # and restore the session, or simply sign in anonymously every time.
+                # For simplicity, we'll just try to sign in anonymously again if no active session
+                # This will create a new anonymous user if the old one expired or session is lost.
+                # For persistent anonymous identity across app restarts without manual session restore,
+                # you might need to store refresh tokens or use persistent anonymous IDs.
+                # Here, we'll try to sign in anonymously and if successful, store the new ID.
+                # The user will then be associated with this instance's anonymous ID.
+                pass # We'll do auth below if no active session.
+
+            # Perform anonymous sign-in. This will create a new anonymous user if one doesn't exist
+            # or implicitly use an existing one if a session cookie/token is implicitly managed.
+            # Supabase-py's anonymous sign-in usually creates a new user each time if no persistent session is restored.
+            # To ensure persistent identity, we should store and reuse the refresh token.
+            # For this context, let's keep it simple: generate a consistent local 'user_id' for Supabase.
+            # A more robust client-side identity for desktop apps would involve storing Supabase refresh tokens securely.
+
+            # Alternative: Rely on the local SQLite setting for the user_id (local UUID),
+            # then just use the public Supabase key for direct inserts.
+            # This bypasses Supabase Auth in Python, relying on RLS policies that
+            # permit inserts based on the 'anon' key.
+            # This is simpler and aligns with "no user management on desktop".
+
+            local_unique_user_id = self.send_db_command('get_setting', ('local_unique_user_id',), expect_result=True)
+            if not local_unique_user_id:
+                local_unique_user_id = str(uuid.uuid4())
+                self.send_db_command('set_setting', ('local_unique_user_id', local_unique_user_id), expect_result=False)
+                logging.info(f"Generated new local_unique_user_id: {local_unique_user_id}")
+            
+            self.supabase_user_id = local_unique_user_id
+            logging.info(f"Supabase client initialized. Using local_unique_user_id: {self.supabase_user_id}")
+
+
+        except Exception as e:
+            logging.error(f"Error initializing Supabase client: {e}", exc_info=True)
+            messagebox.showwarning("Cloud Sync Error", "Failed to initialize Supabase for cloud sync. Leaderboard features will be unavailable.")
+
+    def _send_supabase_data(self, table_name, data):
+        """Sends data to Supabase using the initialized client."""
+        if not self.supabase_client:
+            logging.warning("Cannot send data to Supabase: Client not initialized.")
+            return False
+
+        try:
+            # Use upsert to insert or update the record.
+            # Supabase identifies rows for upsert based on the primary key.
+            # For 'leaderboard_stats', the primary key is (user_id, stat_date).
+            response = self.supabase_client.table(table_name).upsert(data).execute()
+            
+            if response and response.data:
+                logging.info(f"Data successfully upserted to Supabase table '{table_name}': {response.data}")
+                return True
+            else:
+                logging.error(f"Failed to upsert data to Supabase table '{table_name}': {response.status_code if response else 'No response'}")
+                return False
+
+        except Exception as e:
+            logging.error(f"Error sending data to Supabase table '{table_name}': {e}", exc_info=True)
+            return False
 
     def db_worker(self):
         """Dedicated thread for Database Operations."""
@@ -183,18 +286,15 @@ class WorkTracker:
                         if result_queue:
                             result_queue.put(result)
                     else:
-                        logging.error(
-                            f"Unknown database operation: {operation_type}")
+                        logging.error(f"Unknown database operation: {operation_type}")
                         if result_queue:
                             result_queue.put(None)
                 else:
-                    logging.warning(
-                        f"Database not initialized. Skipping operation: {operation_type}")
+                    logging.warning(f"Database not initialized. Skipping operation: {operation_type}")
                     if result_queue:
                         result_queue.put(None)
             except Exception as e:
-                logging.error(
-                    f"Database operation '{operation_type}' failed: {e}")
+                logging.error(f"Database operation '{operation_type}' failed: {e}")
                 if result_queue:
                     result_queue.put(None)
             finally:
@@ -211,33 +311,18 @@ class WorkTracker:
         return None
 
     def create_tray_icon(self):
-        """Creates a system tray icon with a default image and loads font for dynamic updates."""
+        """Creates a system tray icon with a default image."""
         self.tray_icon = None
 
         if not PIL_AVAILABLE:
-            logging.warning(
-                "Tray icon creation skipped: Pillow not available.")
-            messagebox.showwarning(
-                "Tray Icon Error", "Failed to create system tray icon. The 'Pillow' library is not installed. Please install it using 'pip install Pillow' for full functionality.")
+            logging.warning("Tray icon creation skipped: Pillow not available.")
+            messagebox.showwarning("Tray Icon Error", "Failed to create system tray icon. The 'Pillow' library is not installed. Please install it using 'pip install Pillow' for full functionality.")
             return
 
         try:
-            # Create a base image for the tray icon (e.g., a white square)
-            self.base_tray_image = Image.new(
-                "RGB", (16, 16), color=(255, 255, 255))
+            self.base_tray_image = Image.new("RGB", (16, 16), color=(255, 255, 255))
             draw = ImageDraw.Draw(self.base_tray_image)
-            # Optionally draw a small 'W' or other indicator
-            draw.text((2, 0), "W", fill=(0, 0, 0))  # Initial 'W'
-
-            # Try to load a font for drawing time. Adjust path/name as needed.
-            # Common font paths might vary by OS. Using a generic name.
-            try:
-                self.tray_font = ImageFont.truetype(
-                    "arial.ttf", 10)  # Adjust size as needed
-            except IOError:
-                logging.warning(
-                    "Could not load 'arial.ttf', using default Pillow font for tray icon.")
-                self.tray_font = ImageFont.load_default()
+            draw.text((2, 0), "W", fill=(0, 0, 0))
 
             menu = (
                 pystray.MenuItem("Open", self.show_window),
@@ -246,58 +331,20 @@ class WorkTracker:
 
             self.tray_icon = pystray.Icon(
                 "WorkTracker", self.base_tray_image, "WorkTracker", menu)
-
-            # Run the tray icon in a separate thread
-            # pystray.Icon.run_detached() is generally preferred for non-blocking
-            # but using threading.Thread for consistency with existing pattern.
+            
             thread = threading.Thread(target=self.tray_icon.run, daemon=True)
             thread.start()
             logging.info("Tray icon created successfully.")
         except Exception as e:
-            logging.error(
-                f"Failed to create tray icon: {e}. Ensure Pillow is correctly installed and font is accessible.", exc_info=True)
+            logging.error(f"Failed to create tray icon: {e}. Ensure Pillow is correctly installed.", exc_info=True)
             self.tray_icon = None
-            messagebox.showwarning(
-                "Tray Icon Error", "Failed to create system tray icon. An unexpected error occurred. Please ensure 'Pillow' library is correctly installed (pip install Pillow).")
-
-    def _update_tray_icon_time(self, time_str):
-        """Updates the tray icon with the given time string."""
-        if not self.tray_icon or not PIL_AVAILABLE:
-            return
-
-        try:
-            # Create a new image for each update to avoid drawing artifacts
-            img = Image.new("RGB", (16, 16), color=(
-                255, 255, 255))  # White background
-            draw = ImageDraw.Draw(img)
-
-            # Draw the time string. Adjust coordinates and font size for 16x16.
-            # For 16x16, "MM:SS" is often more legible than "HH:MM:SS"
-            # Text position might need fine-tuning based on font and string length
-            text_color = (0, 0, 0)  # Black text
-
-            # A common approach for centering text in a small icon:
-            # Calculate text size
-            text_width, text_height = draw.textsize(
-                time_str, font=self.tray_font)
-            # Calculate position to center
-            x = (16 - text_width) / 2
-            y = (16 - text_height) / 2
-
-            draw.text((x, y), time_str, font=self.tray_font, fill=text_color)
-
-            self.tray_icon.icon = img
-        except Exception as e:
-            logging.error(
-                f"Error updating tray icon with time '{time_str}': {e}", exc_info=True)
+            messagebox.showwarning("Tray Icon Error", "Failed to create system tray icon. An unexpected error occurred. Please ensure 'Pillow' library is correctly installed (pip install Pillow).")
 
     def show_window(self, icon=None, item=None):
         """Shows the main window."""
         self.root.deiconify()
-        if self.tray_icon:
-            # When window is opened, revert tray icon to base image
-            if self.base_tray_image:
-                self.tray_icon.icon = self.base_tray_image
+        if self.tray_icon and self.base_tray_image:
+            self.tray_icon.icon = self.base_tray_image
             self.tray_icon.visible = False
 
     def hide_window(self):
@@ -305,11 +352,8 @@ class WorkTracker:
         self.root.withdraw()
         if self.tray_icon:
             self.tray_icon.visible = True
-            # When window is hidden, start updating tray icon with time
-            if self.is_running and not self.is_paused:
-                # Reset timer for immediate update
-                self.last_tray_update_time = datetime.datetime.now()
-                self.update_stopwatch()  # Ensure stopwatch update loop is running
+            if self.base_tray_image:
+                self.tray_icon.icon = self.base_tray_image
 
     def exit_app(self, icon=None, item=None):
         """Exits the application and stops any running session."""
@@ -317,7 +361,7 @@ class WorkTracker:
             if self.is_running:
                 self.stop_session()
             if self.tray_icon:
-                self.tray_icon.stop()  # Stop the pystray icon thread
+                self.tray_icon.stop()
             self.root.destroy()
             self.db_queue.join()
             logging.info("Application exited from tray.")
@@ -326,8 +370,7 @@ class WorkTracker:
 
     def get_available_categories(self):
         """Gets categories from db."""
-        all_categories = self.send_db_command(
-            'get_all_categories', expect_result=True)
+        all_categories = self.send_db_command('get_all_categories', expect_result=True)
         if all_categories is None:
             all_categories = []
         return all_categories
@@ -337,7 +380,6 @@ class WorkTracker:
         available_categories = self.get_available_categories()
         self.category_dropdown['values'] = available_categories
         if available_categories:
-            # If there are categories, try to set the first one or the loaded default
             if not self.category_var.get() or self.category_var.get() not in available_categories:
                 self.category_var.set(available_categories[0])
         else:
@@ -345,24 +387,21 @@ class WorkTracker:
 
     def load_default_category_setting(self):
         """Loads the default category from settings and sets it in the dropdown."""
-        default_category = self.send_db_command(
-            'get_setting', ('default_category',), expect_result=True)
-        # Get current available categories
+        default_category = self.send_db_command('get_setting', ('default_category',), expect_result=True)
         available_categories = self.get_available_categories()
 
         if default_category and default_category in available_categories:
             self.category_var.set(default_category)
-            logging.info(
-                f"Default category '{default_category}' loaded and set.")
+            logging.info(f"Default category '{default_category}' loaded and set.")
         elif default_category and default_category not in available_categories:
-            logging.warning(
-                f"Default category '{default_category}' found in settings but no longer exists. Resetting.")
-            self.send_db_command(
-                'set_setting', ('default_category', None), expect_result=False)
-            self.update_category_dropdown()  # Re-set to first available or "No Categories"
+            logging.warning(f"Default category '{default_category}' found in settings but no longer exists. Resetting.")
+            self.send_db_command('set_setting', ('default_category', None), expect_result=False)
+            if available_categories:
+                self.category_var.set(available_categories[0])
+            else:
+                self.category_var.set("No Categories")
         else:
             logging.info("No default category setting found or it's invalid.")
-            # If no default is set or it's invalid, ensure dropdown shows first available or "No Categories"
             if available_categories:
                 self.category_var.set(available_categories[0])
             else:
@@ -378,31 +417,23 @@ class WorkTracker:
         form_frame = ttk.Frame(settings_dialog, padding=10)
         form_frame.pack(padx=10, pady=10)
 
-        ttk.Label(form_frame, text="Select Default Category:").grid(
-            row=0, column=0, sticky="w", pady=5)
+        ttk.Label(form_frame, text="Select Default Category:").grid(row=0, column=0, sticky="w", pady=5)
 
-        # Get all categories from DB, plus an explicit "None" option
-        current_categories = self.send_db_command(
-            'get_all_categories', expect_result=True)
-        category_options = ["None"] + \
-            (current_categories if current_categories else [])
+        current_categories = self.send_db_command('get_all_categories', expect_result=True)
+        category_options = ["None"] + (current_categories if current_categories else [])
 
         self.default_category_setting_var = tk.StringVar()
-
-        # Get current default setting from DB for pre-selection
-        current_default = self.send_db_command(
-            'get_setting', ('default_category',), expect_result=True)
+        
+        current_default = self.send_db_command('get_setting', ('default_category',), expect_result=True)
         if current_default and current_default in category_options:
             self.default_category_setting_var.set(current_default)
         else:
-            # Default to "None" if no setting or invalid
             self.default_category_setting_var.set("None")
 
         default_category_dropdown = ttk.Combobox(
             form_frame, textvariable=self.default_category_setting_var, values=category_options, state="readonly"
         )
-        default_category_dropdown.grid(
-            row=0, column=1, sticky="ew", padx=5, pady=5)
+        default_category_dropdown.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
 
         button_frame = ttk.Frame(settings_dialog, padding=5)
         button_frame.pack(pady=10)
@@ -411,8 +442,7 @@ class WorkTracker:
                                  command=lambda: self.save_default_category_setting(settings_dialog))
         save_button.pack(side=tk.LEFT, padx=5)
 
-        cancel_button = ttk.Button(
-            button_frame, text="Cancel", command=settings_dialog.destroy)
+        cancel_button = ttk.Button(button_frame, text="Cancel", command=settings_dialog.destroy)
         cancel_button.pack(side=tk.RIGHT, padx=5)
 
         settings_dialog.wait_window()
@@ -420,20 +450,155 @@ class WorkTracker:
     def save_default_category_setting(self, dialog):
         """Saves the selected default category to the database."""
         selected_default = self.default_category_setting_var.get()
-
-        # Store None if "None" is selected
+        
         value_to_save = None if selected_default == "None" else selected_default
 
-        success = self.send_db_command(
-            'set_setting', ('default_category', value_to_save), expect_result=True)
+        success = self.send_db_command('set_setting', ('default_category', value_to_save), expect_result=True)
         if success:
-            messagebox.showinfo(
-                "Settings Saved", "Default category setting updated.")
-            self.load_default_category_setting()  # Reload to update main dropdown
+            messagebox.showinfo("Settings Saved", "Default category setting updated.")
+            self.load_default_category_setting()
             dialog.destroy()
         else:
-            messagebox.showerror(
-                "Error", "Failed to save default category setting.")
+            messagebox.showerror("Error", "Failed to save default category setting.")
+
+    def load_display_name_setting(self):
+        """Loads the display name from settings and initializes Supabase user ID if not set."""
+        self.display_name = self.send_db_command('get_setting', ('display_name',), expect_result=True)
+        
+        # Ensure a local_unique_user_id exists for Supabase
+        local_user_id = self.send_db_command('get_setting', ('local_unique_user_id',), expect_result=True)
+        if not local_user_id:
+            local_user_id = str(uuid.uuid4())
+            self.send_db_command('set_setting', ('local_unique_user_id', local_user_id), expect_result=False)
+            logging.info(f"Generated and stored new local_unique_user_id: {local_user_id}")
+        self.supabase_user_id = local_user_id # This ID is used for Supabase sync
+
+        if not self.display_name:
+            # Default display name links to the locally generated user ID
+            self.display_name = f"User-{self.supabase_user_id[:8]}" 
+            logging.info(f"No custom display name set. Using default: {self.display_name}")
+        else:
+            logging.info(f"Display name loaded: {self.display_name}")
+
+    def open_display_name_settings(self):
+        """Opens a dialog to set the user's display name."""
+        display_name_dialog = tk.Toplevel(self.root)
+        display_name_dialog.title("Set Display Name")
+        display_name_dialog.transient(self.root)
+        display_name_dialog.grab_set()
+
+        form_frame = ttk.Frame(display_name_dialog, padding=10)
+        form_frame.pack(padx=10, pady=10)
+
+        ttk.Label(form_frame, text="Your Display Name for Leaderboard:").grid(row=0, column=0, sticky="w", pady=5)
+        # Pre-fill with current display name, but clear default if it's the auto-generated one
+        self.display_name_var = tk.StringVar(value=self.display_name if self.display_name and not self.display_name.startswith("User-") else "")
+        display_name_entry = ttk.Entry(form_frame, textvariable=self.display_name_var, width=30)
+        display_name_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
+
+        button_frame = ttk.Frame(display_name_dialog, padding=5)
+        button_frame.pack(pady=10)
+
+        save_button = ttk.Button(button_frame, text="Save",
+                                 command=lambda: self.save_display_name_setting(display_name_dialog))
+        save_button.pack(side=tk.LEFT, padx=5)
+
+        cancel_button = ttk.Button(button_frame, text="Cancel", command=display_name_dialog.destroy)
+        cancel_button.pack(side=tk.RIGHT, padx=5)
+
+        display_name_dialog.wait_window()
+
+    def save_display_name_setting(self, dialog):
+        """Saves the user's display name to the database."""
+        new_display_name = self.display_name_var.get().strip()
+        if not new_display_name:
+            messagebox.showwarning("Input Error", "Display name cannot be empty.")
+            return
+
+        success = self.send_db_command('set_setting', ('display_name', new_display_name), expect_result=True)
+        if success:
+            self.display_name = new_display_name
+            messagebox.showinfo("Settings Saved", "Display name updated.")
+            dialog.destroy()
+        else:
+            messagebox.showerror("Error", "Failed to save display name.")
+
+    def sync_daily_stats_to_cloud(self):
+        """Calculates daily stats and uploads them to Supabase."""
+        if not SUPABASE_AVAILABLE:
+            messagebox.showwarning("Cloud Sync", "Supabase library not available. Cannot sync stats.")
+            return
+        if not self.supabase_client:
+            messagebox.showwarning("Cloud Sync", "Supabase client not initialized. Check logs for API key errors.")
+            return
+        if not self.supabase_user_id:
+             messagebox.showwarning("Cloud Sync", "Local user ID for Supabase not generated. Try restarting the app or check logs.")
+             return
+
+        # Prompt for display name if it's still the default UUID-based one
+        if not self.display_name or self.display_name.startswith("User-"):
+            response = messagebox.askyesno("Display Name Recommended", "You don't have a custom display name set. Your stats will be uploaded as a generic user ID. It is highly recommended to set a custom display name for the leaderboard. Do you want to set one now?")
+            if response:
+                self.open_display_name_settings()
+                # If name was successfully set and is no longer default, proceed with sync
+                if self.display_name and not self.display_name.startswith("User-"):
+                    pass
+                else:
+                    return # User cancelled or failed to set name
+            else:
+                pass # User chose to proceed with generic ID
+
+        today = datetime.date.today()
+        start_of_today = datetime.datetime(today.year, today.month, today.day, 0, 0, 0, 0)
+        end_of_today = datetime.datetime(today.year, today.month, today.day, 23, 59, 59, 999999)
+
+        # Get all sessions for today
+        today_sessions = self.send_db_command(
+            'get_filtered_sessions',
+            (start_of_today, end_of_today, "All", None), # Filter by date, ignore category/search
+            expect_result=True
+        )
+
+        if not today_sessions:
+            messagebox.showinfo("Cloud Sync", "No sessions recorded today to sync.")
+            return
+
+        total_sessions_today = len(today_sessions)
+        longest_session_duration_minutes = 0.0
+
+        for session in today_sessions:
+            # session: (id, start_time_str, end_time_str, category, notes)
+            try:
+                start_dt = datetime.datetime.strptime(session[1], '%Y-%m-%d %H:%M:%S.%f')
+                # Ensure end_time exists for duration calculation
+                if session[2]:
+                    end_dt = datetime.datetime.strptime(session[2], '%Y-%m-%d %H:%M:%S.%f')
+                    duration = (end_dt - start_dt).total_seconds() / 60 # in minutes
+                    if duration > longest_session_duration_minutes:
+                        longest_session_duration_minutes = duration
+            except (ValueError, TypeError) as e:
+                logging.error(f"Error parsing session times for sync: {session} - {e}")
+                continue # Skip malformed or incomplete session
+
+        daily_stats_data = {
+            'user_id': self.supabase_user_id, # Use the consistent local Supabase user ID
+            'display_name': self.display_name,
+            'stat_date': today.isoformat(), # YYYY-MM-DD
+            'total_sessions': total_sessions_today,
+            'longest_session_duration_minutes': round(longest_session_duration_minutes, 2),
+            'last_synced': datetime.datetime.now().isoformat()
+        }
+
+        # Send data to Supabase leaderboard_stats table
+        success = self._send_supabase_data('leaderboard_stats', daily_stats_data)
+
+        if success:
+            messagebox.showinfo("Cloud Sync", "Daily statistics synced to cloud successfully!")
+            logging.info(f"Synced daily stats for {self.display_name}: {daily_stats_data}")
+        else:
+            messagebox.showerror("Cloud Sync Error", "Failed to sync daily statistics to cloud. Check app.log.")
+            logging.error(f"Failed to sync daily stats for {self.display_name}")
+
 
     def on_category_select(self, event):
         """Handles category selection."""
@@ -447,20 +612,16 @@ class WorkTracker:
                 "Add Category", "Enter new category name:")
             if new_category and new_category.strip():
                 new_category = new_category.strip()
-                success = self.send_db_command(
-                    'insert_category', (new_category,), expect_result=True)
+                success = self.send_db_command('insert_category', (new_category,), expect_result=True)
                 if success:
                     self.update_category_dropdown()
                     self.category_var.set(new_category)
-                    messagebox.showinfo(
-                        "Success", f"Category '{new_category}' added.")
+                    messagebox.showinfo("Success", f"Category '{new_category}' added.")
                 else:
-                    messagebox.showerror(
-                        "Error", f"Failed to add category '{new_category}'. It might already exist.")
+                    messagebox.showerror("Error", f"Failed to add category '{new_category}'. It might already exist.")
         except Exception as e:
             logging.error(f"Error adding category: {e}")
-            messagebox.showerror(
-                "Error", f"An error occurred while adding category: {e}")
+            messagebox.showerror("Error", f"An error occurred while adding category: {e}")
 
     def delete_category(self):
         """Deletes the currently selected category from the database."""
@@ -471,28 +632,23 @@ class WorkTracker:
                 return
 
             if messagebox.askyesno("Confirm Delete", f"Are you sure you want to permanently delete category '{selected_category}'?\n\nAll existing sessions with this category will be set to 'Uncategorized'."):
-                success = self.send_db_command(
-                    'delete_category_from_db', (selected_category,), expect_result=True)
+                success = self.send_db_command('delete_category_from_db', (selected_category,), expect_result=True)
                 if success:
                     self.update_category_dropdown()
-                    messagebox.showinfo(
-                        "Category Deleted", f"Category '{selected_category}' and its associated sessions updated to 'Uncategorized'.")
-                    self.load_default_category_setting()  # Check if default category was deleted
+                    messagebox.showinfo("Category Deleted", f"Category '{selected_category}' and its associated sessions updated to 'Uncategorized'.")
+                    self.load_default_category_setting()
                 else:
-                    messagebox.showerror(
-                        "Error", f"Failed to delete category '{selected_category}'.")
+                    messagebox.showerror("Error", f"Failed to delete category '{selected_category}'.")
         except Exception as e:
             logging.error(f"Error deleting category: {e}")
-            messagebox.showerror(
-                "Error", f"An error occurred while deleting category: {e}")
+            messagebox.showerror("Error", f"An error occurred while deleting category: {e}")
 
     def rename_category(self):
         """Renames the currently selected category in the database."""
         try:
             old_category = self.category_var.get()
             if not old_category or old_category == "No Categories":
-                messagebox.showinfo("Rename Category",
-                                    "Please select a category to rename.")
+                messagebox.showinfo("Rename Category", "Please select a category to rename.")
                 return
 
             new_category = simpledialog.askstring(
@@ -505,182 +661,139 @@ class WorkTracker:
                         "Rename Category", "Old and new category names are the same. No change made.")
                     return
 
-                success = self.send_db_command(
-                    'rename_category', (old_category, new_category), expect_result=True)
+                success = self.send_db_command('rename_category', (old_category, new_category), expect_result=True)
                 if success:
                     self.update_category_dropdown()
                     self.category_var.set(new_category)
-                    self.load_default_category_setting()  # Check if default category was renamed
-                    messagebox.showinfo(
-                        "Rename Category", f"Category '{old_category}' renamed to '{new_category}'.")
+                    self.load_default_category_setting()
+                    messagebox.showinfo("Rename Category", f"Category '{old_category}' renamed to '{new_category}'.")
                 else:
-                    messagebox.showerror(
-                        "Error", f"Failed to rename category '{old_category}'. New name might already exist.")
+                    messagebox.showerror("Error", f"Failed to rename category '{old_category}'. New name might already exist.")
         except Exception as e:
             logging.error(f"Error renaming category: {e}")
-            messagebox.showerror(
-                "Error", f"An error occurred while renaming category: {e}")
+            messagebox.showerror("Error", f"An error occurred while renaming category: {e}")
 
     def update_stopwatch(self):
-        """Update the stopwatch display and potentially the tray icon."""
+        """Update the stopwatch display."""
         if self.stopwatch_running and not self.is_paused:
             current_time = datetime.datetime.now()
             elapsed = current_time - self.start_time
             self.elapsed_time = elapsed.total_seconds()
 
             if self.root.winfo_ismapped():
-                # Update main window stopwatch every 10ms
                 formatted_time = time.strftime("%H:%M:%S", time.gmtime(
                     self.elapsed_time)) + f".{int((self.elapsed_time % 1) * 1000):03}"
                 self.stopwatch_label.config(text=formatted_time)
-            elif self.tray_icon and self.tray_font:  # If window is hidden and tray icon exists
-                # Update tray icon less frequently (e.g., every second)
-                if (current_time - self.last_tray_update_time).total_seconds() >= 1:
-                    minutes, seconds = divmod(int(self.elapsed_time), 60)
-                    hours, minutes = divmod(minutes, 60)
-
-                    # Format as HH:MM or MM:SS depending on duration for better legibility
-                    if hours > 0:
-                        tray_time_str = f"{hours:02d}:{minutes:02d}"
-                    else:
-                        tray_time_str = f"{minutes:02d}:{seconds:02d}"
-
-                    self._update_tray_icon_time(tray_time_str)
-                    self.last_tray_update_time = current_time
-
-        # Schedule the next update regardless of window state or tray update
+        
         self.root.after(10, self.update_stopwatch)
 
     def toggle_pause_resume(self):
         """Toggles the session between paused and resumed states."""
-        if self.is_running:  # Only allow pause/resume if a session is active
+        if self.is_running:
             if not self.is_paused:
-                # Pause the session
                 self.is_paused = True
                 self.stopwatch_running = False
-                self.pause_start_time = datetime.datetime.now()  # Record pause start time
+                self.pause_start_time = datetime.datetime.now()
                 self.pause_button.config(text="Resume")
-                self.start_button.config(
-                    state=tk.DISABLED)  # Keep start disabled
-                self.stop_button.config(state=tk.NORMAL)  # Keep stop enabled
-
-                # When paused, revert tray icon to base image (no time)
+                self.start_button.config(state=tk.DISABLED)
+                self.stop_button.config(state=tk.NORMAL)
+                
                 if self.tray_icon and self.base_tray_image:
                     self.tray_icon.icon = self.base_tray_image
-
+                
                 logging.info("Session paused.")
             else:
-                # Resume the session
                 self.is_paused = False
                 self.stopwatch_running = True
-                # Adjust start_time to account for the pause duration
                 if self.pause_start_time:
                     pause_duration = datetime.datetime.now() - self.pause_start_time
                     self.start_time += pause_duration
-                    self.pause_start_time = None  # Reset pause start time
+                    self.pause_start_time = None
                 self.pause_button.config(text="Pause")
-                self.start_button.config(
-                    state=tk.DISABLED)  # Keep start disabled
-                self.stop_button.config(state=tk.NORMAL)  # Keep stop enabled
-                self.update_stopwatch()  # Restart the stopwatch update loop
+                self.start_button.config(state=tk.DISABLED)
+                self.stop_button.config(state=tk.NORMAL)
+                self.update_stopwatch()
                 logging.info("Session resumed.")
         else:
-            messagebox.showwarning(
-                "Warning", "No session is currently running to pause/resume.")
+            messagebox.showwarning("Warning", "No session is currently running to pause/resume.")
 
     def start_session(self):
         try:
             if self.category_var.get() == "No Categories":
-                messagebox.showwarning(
-                    "Warning", "Please add a category before starting a session.")
+                messagebox.showwarning("Warning", "Please add a category before starting a session.")
                 return
 
             self.start_time = datetime.datetime.now()
             self.is_running = True
-            self.is_paused = False  # Ensure not paused when starting
-            self.pause_start_time = None  # Reset pause time
+            self.is_paused = False
+            self.pause_start_time = None
 
-            # Enable pause and stop buttons, disable start button
             self.start_button.config(state=tk.DISABLED)
             self.pause_button.config(state=tk.NORMAL)
             self.stop_button.config(state=tk.NORMAL)
-            logging.info(
-                "Buttons state updated: Start=DISABLED, Pause=NORMAL, Stop=NORMAL")
+            logging.info("Buttons state updated: Start=DISABLED, Pause=NORMAL, Stop=NORMAL")
 
             self.stopwatch_running = True
             self.update_stopwatch()
             category = self.category_var.get()
             task = self.task_text.get("1.0", tk.END).strip()
-            logging.info(
-                f"Attempting to start session with category: {category}, task: {task}")
+            logging.info(f"Attempting to start session with category: {category}, task: {task}")
 
             self.current_session_id = self.send_db_command(
                 'insert_session', (self.start_time, None, category, task), expect_result=True)
 
             if self.current_session_id is None:
-                logging.error(
-                    "Failed to get session ID from database. Database insertion likely failed.")
-                messagebox.showerror(
-                    "Error", "Failed to start session. Database error. Check app.log for details.")
-                # Revert button states if DB insertion failed
+                logging.error("Failed to get session ID from database. Database insertion likely failed.")
+                messagebox.showerror("Error", "Failed to start session. Database error. Check app.log for details.")
                 self.stopwatch_running = False
                 self.is_running = False
                 self.start_button.config(state=tk.NORMAL)
                 self.pause_button.config(state=tk.DISABLED)
                 self.stop_button.config(state=tk.DISABLED)
-                logging.info(
-                    "Buttons state reverted due to DB error: Start=NORMAL, Pause=DISABLED, Stop=DISABLED")
+                logging.info("Buttons state reverted due to DB error: Start=NORMAL, Pause=DISABLED, Stop=DISABLED")
                 return
 
-            logging.info(
-                f"Session started successfully with category: {category}, ID: {self.current_session_id}")
+            logging.info(f"Session started successfully with category: {category}, ID: {self.current_session_id}")
         except Exception as e:
-            # Log full traceback
             logging.error(f"Error starting session: {e}", exc_info=True)
-            messagebox.showerror(
-                "Error", f"An unexpected error occurred while starting the session: {e}. Check app.log for details.")
-            # Ensure buttons are reset even for unexpected errors
+            messagebox.showerror("Error", f"An unexpected error occurred while starting the session: {e}. Check app.log for details.")
             self.stopwatch_running = False
             self.is_running = False
             self.start_button.config(state=tk.NORMAL)
             self.pause_button.config(state=tk.DISABLED)
             self.stop_button.config(state=tk.DISABLED)
-            logging.info(
-                "Buttons state reverted due to unexpected error: Start=NORMAL, Pause=DISABLED, Stop=DISABLED")
+            logging.info("Buttons state reverted due to unexpected error: Start=NORMAL, Pause=DISABLED, Stop=DISABLED")
 
     def stop_session(self):
         try:
             if self.current_session_id is None:
-                logging.warning(
-                    "Attempted to stop session when no session was running.")
+                logging.warning("Attempted to stop session when no session was running.")
                 return
 
             self.end_time = datetime.datetime.now()
             self.is_running = False
-            self.is_paused = False  # Ensure not paused when stopping
-            self.pause_start_time = None  # Reset pause time
+            self.is_paused = False
+            self.pause_start_time = None
             self.start_button.config(state=tk.NORMAL)
-            self.pause_button.config(state=tk.DISABLED)  # Disable pause button
+            self.pause_button.config(state=tk.DISABLED)
             self.stop_button.config(state=tk.DISABLED)
             self.stopwatch_running = False
             task = self.task_text.get("1.0", tk.END).strip()
 
             self.send_db_command(
-                'update_session', (self.current_session_id, self.end_time, task), expect_result=False)  # No need to expect result here
+                'update_session', (self.current_session_id, self.end_time, task), expect_result=False)
 
             self.task_text.delete("1.0", tk.END)
             self.display_session_duration()
             self.current_session_id = None
             logging.info("Session stopped")
 
-            # When session stops, revert tray icon to base image
             if self.tray_icon and self.base_tray_image:
                 self.tray_icon.icon = self.base_tray_image
 
         except Exception as e:
             logging.error(f"Error stopping session: {e}")
-            messagebox.showerror(
-                "Error", f"An error occurred while stopping the session: {e}")
+            messagebox.showerror("Error", f"An error occurred while stopping the session: {e}")
 
     def display_session_duration(self):
         try:
@@ -690,8 +803,7 @@ class WorkTracker:
                                     f"Session duration: {duration}")
                 logging.info(f"Session duration displayed: {duration}")
             else:
-                logging.warning(
-                    "Cannot display duration: start or end time missing.")
+                logging.warning("Cannot display duration: start or end time missing.")
         except Exception as e:
             logging.error(f"Error displaying session duration: {e}")
 
@@ -703,54 +815,38 @@ class WorkTracker:
         self.history_window.title("Work History")
         self.history_window.geometry("800x600")
 
-        # --- Filter Frame ---
         filter_frame = ttk.Frame(self.history_window, padding=10)
         filter_frame.pack(fill="x", pady=5)
 
-        # Date Range Filter
-        ttk.Label(filter_frame, text="Date Range:").grid(
-            row=0, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(filter_frame, text="Date Range:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
         self.history_date_range_var = tk.StringVar(self.history_window)
         self.history_date_range_var.set("All Time")
-        date_range_options = ["All Time", "Last 7 Days",
-                              "Last 30 Days", "This Month", "This Year"]
+        date_range_options = ["All Time", "Last 7 Days", "Last 30 Days", "This Month", "This Year"]
         self.history_date_range_dropdown = ttk.Combobox(
             filter_frame, textvariable=self.history_date_range_var, values=date_range_options, state="readonly"
         )
-        self.history_date_range_dropdown.grid(
-            row=0, column=1, padx=5, pady=2, sticky="ew")
+        self.history_date_range_dropdown.grid(row=0, column=1, padx=5, pady=2, sticky="ew")
 
-        # Category Filter
-        ttk.Label(filter_frame, text="Category:").grid(
-            row=0, column=2, padx=5, pady=2, sticky="w")
+        ttk.Label(filter_frame, text="Category:").grid(row=0, column=2, padx=5, pady=2, sticky="w")
         self.history_category_var = tk.StringVar(self.history_window)
         self.history_category_var.set("All")
-        all_categories_for_filter = ["All"] + self.send_db_command(
-            'get_all_categories', expect_result=True) + ["Uncategorized"]
+        all_categories_for_filter = ["All"] + self.send_db_command('get_all_categories', expect_result=True) + ["Uncategorized"]
         self.history_category_dropdown = ttk.Combobox(
             filter_frame, textvariable=self.history_category_var, values=all_categories_for_filter, state="readonly"
         )
-        self.history_category_dropdown.grid(
-            row=0, column=3, padx=5, pady=2, sticky="ew")
+        self.history_category_dropdown.grid(row=0, column=3, padx=5, pady=2, sticky="ew")
 
-        # Text Search
-        ttk.Label(filter_frame, text="Search:").grid(
-            row=1, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(filter_frame, text="Search:").grid(row=1, column=0, padx=5, pady=2, sticky="w")
         self.history_search_text_var = tk.StringVar(self.history_window)
-        self.history_search_entry = ttk.Entry(
-            filter_frame, textvariable=self.history_search_text_var)
-        self.history_search_entry.grid(
-            row=1, column=1, columnspan=2, padx=5, pady=2, sticky="ew")
+        self.history_search_entry = ttk.Entry(filter_frame, textvariable=self.history_search_text_var)
+        self.history_search_entry.grid(row=1, column=1, columnspan=2, padx=5, pady=2, sticky="ew")
 
-        # Apply Filters Button
-        apply_filters_button = ttk.Button(
-            filter_frame, text="Apply Filters", command=self.update_history_display)
+        apply_filters_button = ttk.Button(filter_frame, text="Apply Filters", command=self.update_history_display)
         apply_filters_button.grid(row=1, column=3, padx=5, pady=2, sticky="e")
 
         filter_frame.columnconfigure(1, weight=1)
         filter_frame.columnconfigure(3, weight=1)
 
-        # --- Treeview for History Display ---
         self.history_tree = ttk.Treeview(self.history_window, columns=(
             "ID", "Start Time", "End Time", "Category", "Notes"), show="headings")
         self.history_tree.heading("ID", text="ID")
@@ -767,34 +863,26 @@ class WorkTracker:
 
         self.history_tree.pack(expand=True, fill="both", padx=10, pady=10)
 
-        # --- Buttons for History Actions ---
         history_action_frame = ttk.Frame(self.history_window, padding=5)
         history_action_frame.pack(fill="x", pady=5)
 
-        edit_session_button = ttk.Button(
-            history_action_frame, text="Edit Selected Session", command=self.edit_selected_session)
+        edit_session_button = ttk.Button(history_action_frame, text="Edit Selected Session", command=self.edit_selected_session)
         edit_session_button.pack(side=tk.RIGHT, padx=5)
 
-        export_data_button = ttk.Button(
-            history_action_frame, text="Export Data", command=self.export_data)
+        export_data_button = ttk.Button(history_action_frame, text="Export Data", command=self.export_data)
         export_data_button.pack(side=tk.RIGHT, padx=5)
 
-        # Context Menu for Treeview (Right-click to edit)
         self.history_tree.bind("<Button-3>", self.show_history_context_menu)
         self.history_context_menu = tk.Menu(self.history_window, tearoff=0)
-        self.history_context_menu.add_command(
-            label="Edit Session", command=self.edit_selected_session)
-        self.history_context_menu.add_command(
-            label="Export Selected Data", command=self.export_data)
+        self.history_context_menu.add_command(label="Edit Session", command=self.edit_selected_session)
+        self.history_context_menu.add_command(label="Export Selected Data", command=self.export_data)
 
-        # Initial display of history
         self.update_history_display()
 
     def show_history_context_menu(self, event):
         """Displays a context menu when right-clicking on the history treeview."""
         try:
-            self.history_tree.selection_set(
-                self.history_tree.identify_row(event.y))
+            self.history_tree.selection_set(self.history_tree.identify_row(event.y))
             self.history_context_menu.tk_popup(event.x_root, event.y_root)
         finally:
             self.history_context_menu.grab_release()
@@ -803,17 +891,14 @@ class WorkTracker:
         """Opens a dialog to edit the details of the selected session."""
         selected_item = self.history_tree.focus()
         if not selected_item:
-            messagebox.showinfo(
-                "Edit Session", "Please select a session to edit.")
+            messagebox.showinfo("Edit Session", "Please select a session to edit.")
             return
 
         session_id = self.history_tree.item(selected_item, 'values')[0]
-        session_details = self.send_db_command(
-            'get_session_by_id', (session_id,), expect_result=True)
+        session_details = self.send_db_command('get_session_by_id', (session_id,), expect_result=True)
 
         if not session_details:
-            messagebox.showerror(
-                "Error", "Could not retrieve session details.")
+            messagebox.showerror("Error", "Could not retrieve session details.")
             return
 
         s_id, s_start_time_str, s_end_time_str, s_category, s_notes = session_details
@@ -826,34 +911,23 @@ class WorkTracker:
         form_frame = ttk.Frame(edit_dialog, padding=10)
         form_frame.pack(padx=10, pady=10)
 
-        ttk.Label(form_frame, text="Start Time (YYYY-MM-DD HH:MM:SS.ffffff):").grid(
-            row=0, column=0, sticky="w", pady=2)
-        self.edit_start_time_var = tk.StringVar(
-            value=s_start_time_str if s_start_time_str else "")
-        ttk.Entry(form_frame, textvariable=self.edit_start_time_var, width=35).grid(
-            row=0, column=1, sticky="ew", padx=5, pady=2)
+        ttk.Label(form_frame, text="Start Time (YYYY-MM-DD HH:MM:SS.ffffff):").grid(row=0, column=0, sticky="w", pady=2)
+        self.edit_start_time_var = tk.StringVar(value=s_start_time_str if s_start_time_str else "")
+        ttk.Entry(form_frame, textvariable=self.edit_start_time_var, width=35).grid(row=0, column=1, sticky="ew", padx=5, pady=2)
 
-        ttk.Label(form_frame, text="End Time (YYYY-MM-DD HH:MM:SS.ffffff):").grid(
-            row=1, column=0, sticky="w", pady=2)
-        self.edit_end_time_var = tk.StringVar(
-            value=s_end_time_str if s_end_time_str else "")
-        ttk.Entry(form_frame, textvariable=self.edit_end_time_var, width=35).grid(
-            row=1, column=1, sticky="ew", padx=5, pady=2)
+        ttk.Label(form_frame, text="End Time (YYYY-MM-DD HH:MM:SS.ffffff):").grid(row=1, column=0, sticky="w", pady=2)
+        self.edit_end_time_var = tk.StringVar(value=s_end_time_str if s_end_time_str else "")
+        ttk.Entry(form_frame, textvariable=self.edit_end_time_var, width=35).grid(row=1, column=1, sticky="ew", padx=5, pady=2)
 
-        ttk.Label(form_frame, text="Category:").grid(
-            row=2, column=0, sticky="w", pady=2)
-        self.edit_category_var = tk.StringVar(
-            value=s_category if s_category else "Uncategorized")
-        edit_categories = self.send_db_command(
-            'get_all_categories', expect_result=True) + ["Uncategorized"]
+        ttk.Label(form_frame, text="Category:").grid(row=2, column=0, sticky="w", pady=2)
+        self.edit_category_var = tk.StringVar(value=s_category if s_category else "Uncategorized")
+        edit_categories = self.send_db_command('get_all_categories', expect_result=True) + ["Uncategorized"]
         self.edit_category_dropdown = ttk.Combobox(
             form_frame, textvariable=self.edit_category_var, values=edit_categories, state="readonly"
         )
-        self.edit_category_dropdown.grid(
-            row=2, column=1, sticky="ew", padx=5, pady=2)
+        self.edit_category_dropdown.grid(row=2, column=1, sticky="ew", padx=5, pady=2)
 
-        ttk.Label(form_frame, text="Notes:").grid(
-            row=3, column=0, sticky="nw", pady=2)
+        ttk.Label(form_frame, text="Notes:").grid(row=3, column=0, sticky="nw", pady=2)
         self.edit_notes_text = tk.Text(form_frame, height=4, width=30)
         self.edit_notes_text.grid(row=3, column=1, sticky="ew", padx=5, pady=2)
         self.edit_notes_text.insert(tk.END, s_notes if s_notes else "")
@@ -865,8 +939,7 @@ class WorkTracker:
                                  command=lambda: self.save_edited_session(edit_dialog, s_id))
         save_button.pack(side=tk.LEFT, padx=5)
 
-        cancel_button = ttk.Button(
-            button_frame, text="Cancel", command=edit_dialog.destroy)
+        cancel_button = ttk.Button(button_frame, text="Cancel", command=edit_dialog.destroy)
         cancel_button.pack(side=tk.RIGHT, padx=5)
 
         edit_dialog.wait_window()
@@ -888,39 +961,33 @@ class WorkTracker:
                 parsed = False
                 for fmt in time_formats:
                     try:
-                        new_start_time = datetime.datetime.strptime(
-                            new_start_time_str, fmt)
+                        new_start_time = datetime.datetime.strptime(new_start_time_str, fmt)
                         parsed = True
                         break
                     except ValueError:
                         continue
                 if not parsed:
-                    messagebox.showerror(
-                        "Input Error", "Invalid Start Time format. Use Jamboree-MM-DD HH:MM:SS or Jamboree-MM-DD HH:MM:SS.ffffff")
+                    messagebox.showerror("Input Error", "Invalid Start Time format. Use YYYY-MM-DD HH:MM:SS or YYYY-MM-DD HH:MM:SS.ffffff")
                     return
             else:
-                messagebox.showerror(
-                    "Input Error", "Start Time cannot be empty.")
+                messagebox.showerror("Input Error", "Start Time cannot be empty.")
                 return
 
             if new_end_time_str:
                 parsed = False
                 for fmt in time_formats:
                     try:
-                        new_end_time = datetime.datetime.strptime(
-                            new_end_time_str, fmt)
+                        new_end_time = datetime.datetime.strptime(new_end_time_str, fmt)
                         parsed = True
                         break
                     except ValueError:
                         continue
                 if not parsed:
-                    messagebox.showerror(
-                        "Input Error", "Invalid End Time format. Use Jamboree-MM-DD HH:MM:SS or Jamboree-MM-DD HH:MM:SS.ffffff")
+                    messagebox.showerror("Input Error", "Invalid End Time format. Use YYYY-MM-DD HH:MM:SS or YYYY-MM-DD HH:MM:SS.ffffff")
                     return
 
             if new_start_time and new_end_time and new_start_time > new_end_time:
-                messagebox.showerror(
-                    "Input Error", "Start Time cannot be after End Time.")
+                messagebox.showerror("Input Error", "Start Time cannot be after End Time.")
                 return
 
             db_category = new_category if new_category != "Uncategorized" else None
@@ -940,15 +1007,13 @@ class WorkTracker:
 
         except Exception as e:
             logging.error(f"Error saving edited session: {e}")
-            messagebox.showerror(
-                "Error", f"An error occurred while saving changes: {e}")
+            messagebox.showerror("Error", f"An error occurred while saving changes: {e}")
 
     def export_data(self):
         """Allows users to export filtered history data to CSV or Excel."""
         items = self.history_tree.get_children()
         if not items:
-            messagebox.showinfo(
-                "Export Data", "No data available in the history view to export.")
+            messagebox.showinfo("Export Data", "No data available in the history view to export.")
             return
 
         data_to_export = []
@@ -974,19 +1039,15 @@ class WorkTracker:
             try:
                 if file_path.lower().endswith('.csv'):
                     df.to_csv(file_path, index=False)
-                    messagebox.showinfo(
-                        "Export Success", f"Data successfully exported to CSV:\n{file_path}")
+                    messagebox.showinfo("Export Success", f"Data successfully exported to CSV:\n{file_path}")
                 elif file_path.lower().endswith('.xlsx'):
                     df.to_excel(file_path, index=False)
-                    messagebox.showinfo(
-                        "Export Success", f"Data successfully exported to Excel:\n{file_path}")
+                    messagebox.showinfo("Export Success", f"Data successfully exported to Excel:\n{file_path}")
                 else:
-                    messagebox.showerror(
-                        "Export Error", "Unsupported file format. Please choose .csv or .xlsx.")
+                    messagebox.showerror("Export Error", "Unsupported file format. Please choose .csv or .xlsx.")
             except Exception as e:
                 logging.error(f"Error exporting data: {e}")
-                messagebox.showerror(
-                    "Export Error", f"An error occurred during export:\n{e}")
+                messagebox.showerror("Export Error", f"An error occurred during export:\n{e}")
         else:
             messagebox.showinfo("Export Cancelled", "Data export cancelled.")
 
@@ -1008,11 +1069,9 @@ class WorkTracker:
         elif date_range == "Last 30 Days":
             start_date = now - datetime.timedelta(days=30)
         elif date_range == "This Month":
-            start_date = now.replace(
-                day=1, hour=0, minute=0, second=0, microsecond=0)
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         elif date_range == "This Year":
-            start_date = now.replace(
-                month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
         sessions = self.send_db_command(
             'get_filtered_sessions',
@@ -1027,145 +1086,7 @@ class WorkTracker:
                     display_session[3] = "Uncategorized"
                 self.history_tree.insert("", "end", values=display_session)
         else:
-            messagebox.showinfo(
-                "Work History", "No sessions found matching the filters.")
-
-    def update_stopwatch(self):
-        """Update the stopwatch display and potentially the tray icon."""
-        if self.stopwatch_running and not self.is_paused:
-            current_time = datetime.datetime.now()
-            elapsed = current_time - self.start_time
-            self.elapsed_time = elapsed.total_seconds()
-
-            if self.root.winfo_ismapped():
-                # Update main window stopwatch every 10ms
-                formatted_time = time.strftime("%H:%M:%S", time.gmtime(
-                    self.elapsed_time)) + f".{int((self.elapsed_time % 1) * 1000):03}"
-                self.stopwatch_label.config(text=formatted_time)
-            elif self.tray_icon and self.tray_font:  # If window is hidden and tray icon exists
-                # Update tray icon less frequently (e.g., every second)
-                if (current_time - self.last_tray_update_time).total_seconds() >= 1:
-                    minutes, seconds = divmod(int(self.elapsed_time), 60)
-                    hours, minutes = divmod(minutes, 60)
-
-                    # Format as HH:MM or MM:SS depending on duration for better legibility
-                    if hours > 0:
-                        tray_time_str = f"{hours:02d}:{minutes:02d}"
-                    else:
-                        tray_time_str = f"{minutes:02d}:{seconds:02d}"
-
-                    self._update_tray_icon_time(tray_time_str)
-                    self.last_tray_update_time = current_time
-
-        # Schedule the next update regardless of window state or tray update
-        self.root.after(10, self.update_stopwatch)
-
-    def start_session(self):
-        try:
-            if self.category_var.get() == "No Categories":
-                messagebox.showwarning(
-                    "Warning", "Please add a category before starting a session.")
-                return
-
-            self.start_time = datetime.datetime.now()
-            self.is_running = True
-            self.is_paused = False  # Ensure not paused when starting
-            self.pause_start_time = None  # Reset pause time
-
-            # Enable pause and stop buttons, disable start button
-            self.start_button.config(state=tk.DISABLED)
-            self.pause_button.config(state=tk.NORMAL)
-            self.stop_button.config(state=tk.NORMAL)
-            logging.info(
-                "Buttons state updated: Start=DISABLED, Pause=NORMAL, Stop=NORMAL")
-
-            self.stopwatch_running = True
-            self.update_stopwatch()
-            category = self.category_var.get()
-            task = self.task_text.get("1.0", tk.END).strip()
-            logging.info(
-                f"Attempting to start session with category: {category}, task: {task}")
-
-            self.current_session_id = self.send_db_command(
-                'insert_session', (self.start_time, None, category, task), expect_result=True)
-
-            if self.current_session_id is None:
-                logging.error(
-                    "Failed to get session ID from database. Database insertion likely failed.")
-                messagebox.showerror(
-                    "Error", "Failed to start session. Database error. Check app.log for details.")
-                # Revert button states if DB insertion failed
-                self.stopwatch_running = False
-                self.is_running = False
-                self.start_button.config(state=tk.NORMAL)
-                self.pause_button.config(state=tk.DISABLED)
-                self.stop_button.config(state=tk.DISABLED)
-                logging.info(
-                    "Buttons state reverted due to DB error: Start=NORMAL, Pause=DISABLED, Stop=DISABLED")
-                return
-
-            logging.info(
-                f"Session started successfully with category: {category}, ID: {self.current_session_id}")
-        except Exception as e:
-            # Log full traceback
-            logging.error(f"Error starting session: {e}", exc_info=True)
-            messagebox.showerror(
-                "Error", f"An unexpected error occurred while starting the session: {e}. Check app.log for details.")
-            # Ensure buttons are reset even for unexpected errors
-            self.stopwatch_running = False
-            self.is_running = False
-            self.start_button.config(state=tk.NORMAL)
-            self.pause_button.config(state=tk.DISABLED)
-            self.stop_button.config(state=tk.DISABLED)
-            logging.info(
-                "Buttons state reverted due to unexpected error: Start=NORMAL, Pause=DISABLED, Stop=DISABLED")
-
-    def stop_session(self):
-        try:
-            if self.current_session_id is None:
-                logging.warning(
-                    "Attempted to stop session when no session was running.")
-                return
-
-            self.end_time = datetime.datetime.now()
-            self.is_running = False
-            self.is_paused = False  # Ensure not paused when stopping
-            self.pause_start_time = None  # Reset pause time
-            self.start_button.config(state=tk.NORMAL)
-            self.pause_button.config(state=tk.DISABLED)  # Disable pause button
-            self.stop_button.config(state=tk.DISABLED)
-            self.stopwatch_running = False
-            task = self.task_text.get("1.0", tk.END).strip()
-
-            self.send_db_command(
-                'update_session', (self.current_session_id, self.end_time, task), expect_result=False)  # No need to expect result here
-
-            self.task_text.delete("1.0", tk.END)
-            self.display_session_duration()
-            self.current_session_id = None
-            logging.info("Session stopped")
-
-            # When session stops, revert tray icon to base image
-            if self.tray_icon and self.base_tray_image:
-                self.tray_icon.icon = self.base_tray_image
-
-        except Exception as e:
-            logging.error(f"Error stopping session: {e}")
-            messagebox.showerror(
-                "Error", f"An error occurred while stopping the session: {e}")
-
-    def display_session_duration(self):
-        try:
-            if self.start_time and self.end_time:
-                duration = self.end_time - self.start_time
-                messagebox.showinfo("Session duration",
-                                    f"Session duration: {duration}")
-                logging.info(f"Session duration displayed: {duration}")
-            else:
-                logging.warning(
-                    "Cannot display duration: start or end time missing.")
-        except Exception as e:
-            logging.error(f"Error displaying session duration: {e}")
+            messagebox.showinfo("Work History", "No sessions found matching the filters.")
 
     def show_statistics(self):
         """Displays the statistics window."""
@@ -1176,8 +1097,7 @@ class WorkTracker:
         self.statistics_window = tk.Toplevel(self.root)
         self.statistics_window.title("Statistics")
 
-        all_categories_from_db = self.send_db_command(
-            'get_all_categories', expect_result=True)
+        all_categories_from_db = self.send_db_command('get_all_categories', expect_result=True)
         if all_categories_from_db is None:
             all_categories_from_db = []
         categories = ["All"] + all_categories_from_db + ["Uncategorized"]
@@ -1196,8 +1116,7 @@ class WorkTracker:
 
         self.scorecard_label = ttk.Label(
             self.statistics_window, text="")
-        self.scorecard_label.grid(
-            row=2, column=0, columnspan=2, padx=5, pady=5)
+        self.scorecard_label.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
 
         def update_stats():
             """Updates the statistics graph and scorecard."""
@@ -1206,8 +1125,7 @@ class WorkTracker:
 
             daily_average = 0.0
 
-            all_sessions_data = self.send_db_command(
-                'get_sessions', expect_result=True)
+            all_sessions_data = self.send_db_command('get_sessions', expect_result=True)
 
             for widget in self.statistics_window.winfo_children():
                 if isinstance(widget, FigureCanvasTkAgg):
@@ -1216,21 +1134,17 @@ class WorkTracker:
             if not all_sessions_data:
                 messagebox.showinfo(
                     "Statistics", "No data available for the selected filters.")
-                self.scorecard_label.config(
-                    text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
+                self.scorecard_label.config(text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
                 return
 
-            df = pd.DataFrame(all_sessions_data, columns=[
-                              "ID", "start_time", "end_time", "category", "notes"])
+            df = pd.DataFrame(all_sessions_data, columns=["ID", "start_time", "end_time", "category", "notes"])
 
             if df.empty:
                 messagebox.showinfo(
                     "Statistics", "No data available for the selected filters (after DataFrame creation).")
-                self.scorecard_label.config(
-                    text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
+                self.scorecard_label.config(text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
                 return
 
-            # Data preparation - Use format='mixed' for robust datetime parsing
             df['start_time'] = pd.to_datetime(df['start_time'], format='mixed')
             df['end_time'] = pd.to_datetime(df['end_time'], format='mixed')
             df['duration'] = (df['end_time'] - df['start_time']
@@ -1241,10 +1155,8 @@ class WorkTracker:
             if category != "All":
                 df = df[df['category'] == category]
                 if df.empty:
-                    messagebox.showinfo(
-                        "Statistics", "No data available for the selected category.")
-                    self.scorecard_label.config(
-                        text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
+                    messagebox.showinfo("Statistics", "No data available for the selected category.")
+                    self.scorecard_label.config(text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
                     return
 
             now = datetime.datetime.now()
@@ -1254,29 +1166,22 @@ class WorkTracker:
                 start_of_week = now - datetime.timedelta(days=now.weekday())
                 df_filtered = df[df['start_time'] >= start_of_week]
                 df_filtered['day'] = df_filtered['start_time'].dt.day_name()
-                all_days = ['Monday', 'Tuesday', 'Wednesday',
-                            'Thursday', 'Friday', 'Saturday', 'Sunday']
-                grouped = df_filtered.groupby(
-                    'day')['duration'].sum().reindex(all_days, fill_value=0)
+                all_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                grouped = df_filtered.groupby('day')['duration'].sum().reindex(all_days, fill_value=0)
                 daily_average = grouped.mean()
 
             elif view == "Months":
-                df_filtered = df[(df['start_time'].dt.month == now.month) & (
-                    df['start_time'].dt.year == now.year)]
+                df_filtered = df[(df['start_time'].dt.month == now.month) & (df['start_time'].dt.year == now.year)]
                 df_filtered['day'] = df_filtered['start_time'].dt.day
-                days_in_month = pd.date_range(
-                    start=now.replace(day=1), end=now).day
-                grouped = df_filtered.groupby('day')['duration'].sum().reindex(
-                    days_in_month, fill_value=0)
+                days_in_month = pd.date_range(start=now.replace(day=1), end=now).day
+                grouped = df_filtered.groupby('day')['duration'].sum().reindex(days_in_month, fill_value=0)
                 daily_average = grouped.mean()
 
             elif view == "Years":
                 df_filtered = df[df['start_time'].dt.year == now.year]
                 df_filtered['month'] = df_filtered['start_time'].dt.month_name()
-                all_months = ['January', 'February', 'March', 'April', 'May', 'June',
-                              'July', 'August', 'September', 'October', 'November', 'December']
-                grouped = df_filtered.groupby(
-                    'month')['duration'].sum().reindex(all_months, fill_value=0)
+                all_months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+                grouped = df_filtered.groupby('month')['duration'].sum().reindex(all_months, fill_value=0)
                 daily_average = grouped.mean()
 
             if not grouped.empty and grouped.sum() > 0:
@@ -1290,12 +1195,10 @@ class WorkTracker:
                 canvas.draw()
                 canvas.get_tk_widget().grid(row=1, column=0, columnspan=2, padx=5, pady=5)
             else:
-                messagebox.showinfo(
-                    "Statistics", "No work data to display for the selected period and category.")
+                messagebox.showinfo("Statistics", "No work data to display for the selected period and category.")
                 daily_average = 0.0
 
-            self.scorecard_label.config(
-                text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
+            self.scorecard_label.config(text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
 
         update_stats()
         view_dropdown.bind("<<ComboboxSelected>>",
@@ -1352,7 +1255,6 @@ class Database:
         self.conn.commit()
         logging.info("Categories table checked/created.")
 
-        # New: Create settings table for key-value pairs
         self.cursor.execute(
             """
                 CREATE TABLE IF NOT EXISTS settings(
@@ -1364,31 +1266,25 @@ class Database:
         self.conn.commit()
         logging.info("Settings table checked/created.")
 
-        # Insert default categories if the categories table is empty
         self.cursor.execute("SELECT COUNT(*) FROM categories")
         if self.cursor.fetchone()[0] == 0:
             default_categories = ["Work", "Skill", "School"]
             for category in default_categories:
                 try:
-                    self.cursor.execute(
-                        "INSERT INTO categories (name) VALUES (?)", (category,))
+                    self.cursor.execute("INSERT INTO categories (name) VALUES (?)", (category,))
                     self.conn.commit()
-                    logging.info(
-                        f"Default category '{category}' added to categories table.")
+                    logging.info(f"Default category '{category}' added to categories table.")
                 except sqlite3.IntegrityError:
-                    logging.warning(
-                        f"Default category '{category}' already exists, skipping.")
+                    logging.warning(f"Default category '{category}' already exists, skipping.")
                 except Exception as e:
-                    logging.error(
-                        f"Error adding default category '{category}': {e}")
+                    logging.error(f"Error adding default category '{category}': {e}")
             logging.info("Default categories ensured in dedicated table.")
+
 
     def insert_session(self, start_time, end_time, category, notes):
         try:
-            start_time_str = start_time.strftime(
-                '%Y-%m-%d %H:%M:%S.%f') if start_time else None
-            end_time_str = end_time.strftime(
-                '%Y-%m-%d %H:%M:%S.%f') if end_time else None
+            start_time_str = start_time.strftime('%Y-%m-%d %H:%M:%S.%f') if start_time else None
+            end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S.%f') if end_time else None
 
             self.cursor.execute("""
                 INSERT INTO sessions (start_time, end_time, category, notes) VALUES (?,?,?,?)
@@ -1398,14 +1294,12 @@ class Database:
             logging.info(f"Session inserted. ID: {last_id}")
             return last_id
         except Exception as e:
-            logging.error(
-                f"Error inserting session into DB: {e}", exc_info=True)
+            logging.error(f"Error inserting session into DB: {e}", exc_info=True)
             return None
 
     def update_session(self, session_id, end_time, notes):
         try:
-            end_time_str = end_time.strftime(
-                '%Y-%m-%d %H:%M:%S.%f') if end_time else None
+            end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S.%f') if end_time else None
 
             self.cursor.execute("""
                 UPDATE sessions
@@ -1416,15 +1310,13 @@ class Database:
             logging.info(f"Session updated. ID: {session_id}")
         except Exception as e:
             logging.error(f"Error updating session: {e}")
-            return False  # Indicate failure
+            return False
 
     def update_full_session(self, session_id, start_time, end_time, category, notes):
         """Updates all fields of a session in the database."""
         try:
-            start_time_str = start_time.strftime(
-                '%Y-%m-%d %H:%M:%S.%f') if start_time else None
-            end_time_str = end_time.strftime(
-                '%Y-%m-%d %H:%M:%S.%f') if end_time else None
+            start_time_str = start_time.strftime('%Y-%m-%d %H:%M:%S.%f') if start_time else None
+            end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S.%f') if end_time else None
 
             self.cursor.execute("""
                 UPDATE sessions
@@ -1441,8 +1333,7 @@ class Database:
     def get_session_by_id(self, session_id):
         """Gets a single session by its ID."""
         try:
-            self.cursor.execute(
-                "SELECT id, start_time, end_time, category, notes FROM sessions WHERE id = ?", (session_id,))
+            self.cursor.execute("SELECT id, start_time, end_time, category, notes FROM sessions WHERE id = ?", (session_id,))
             session = self.cursor.fetchone()
             logging.info(f"Session {session_id} retrieved.")
             return session
@@ -1453,8 +1344,7 @@ class Database:
     def get_sessions(self):
         """Gets all sessions from database."""
         try:
-            self.cursor.execute(
-                "SELECT id, start_time, end_time, category, notes FROM sessions")
+            self.cursor.execute("SELECT id, start_time, end_time, category, notes FROM sessions")
             sessions = self.cursor.fetchall()
             logging.info("Sessions retrieved")
             return sessions
@@ -1474,8 +1364,7 @@ class Database:
             if end_date:
                 query += " AND start_time <= ?"
                 if end_date.hour == 0 and end_date.minute == 0 and end_date.second == 0:
-                    end_date = end_date.replace(
-                        hour=23, minute=59, second=59, microsecond=999999)
+                    end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
                 params.append(end_date.strftime('%Y-%m-%d %H:%M:%S.%f'))
 
             if category and category != "All":
@@ -1495,8 +1384,7 @@ class Database:
 
             self.cursor.execute(query, tuple(params))
             sessions = self.cursor.fetchall()
-            logging.info(
-                f"Filtered sessions retrieved. Query: {query}, Params: {params}")
+            logging.info(f"Filtered sessions retrieved. Query: {query}, Params: {params}")
             return sessions
         except Exception as e:
             logging.error(f"Error getting filtered sessions: {e}")
@@ -1516,15 +1404,12 @@ class Database:
     def insert_category(self, category_name):
         """Inserts a new category into the dedicated categories table."""
         try:
-            self.cursor.execute(
-                "INSERT INTO categories (name) VALUES (?)", (category_name,))
+            self.cursor.execute("INSERT INTO categories (name) VALUES (?)", (category_name,))
             self.conn.commit()
-            logging.info(
-                f"Category '{category_name}' inserted into dedicated table.")
+            logging.info(f"Category '{category_name}' inserted into dedicated table.")
             return True
         except sqlite3.IntegrityError:
-            logging.warning(
-                f"Category '{category_name}' already exists in dedicated table.")
+            logging.warning(f"Category '{category_name}' already exists in dedicated table.")
             return False
         except Exception as e:
             logging.error(f"Error inserting category '{category_name}': {e}")
@@ -1533,20 +1418,15 @@ class Database:
     def rename_category(self, old_category, new_category):
         """Renames a category in the categories table and updates associated sessions."""
         try:
-            self.cursor.execute(
-                "SELECT 1 FROM categories WHERE name = ? LIMIT 1", (new_category,))
+            self.cursor.execute("SELECT 1 FROM categories WHERE name = ? LIMIT 1", (new_category,))
             if self.cursor.fetchone():
-                logging.warning(
-                    f"Cannot rename '{old_category}' to '{new_category}': New category name already exists.")
+                logging.warning(f"Cannot rename '{old_category}' to '{new_category}': New category name already exists.")
                 return False
 
-            self.cursor.execute(
-                "UPDATE categories SET name = ? WHERE name = ?", (new_category, old_category))
-            self.cursor.execute(
-                "UPDATE sessions SET category = ? WHERE category = ?", (new_category, old_category))
+            self.cursor.execute("UPDATE categories SET name = ? WHERE name = ?", (new_category, old_category))
+            self.cursor.execute("UPDATE sessions SET category = ? WHERE category = ?", (new_category, old_category))
             self.conn.commit()
-            logging.info(
-                f"Category '{old_category}' renamed to '{new_category}' and sessions updated.")
+            logging.info(f"Category '{old_category}' renamed to '{new_category}' and sessions updated.")
             return True
         except Exception as e:
             logging.error(f"Error renaming category: {e}")
@@ -1555,13 +1435,10 @@ class Database:
     def delete_category_from_db(self, category_name):
         """Deletes a category from the categories table and updates associated sessions."""
         try:
-            self.cursor.execute(
-                "UPDATE sessions SET category = NULL WHERE category = ?", (category_name,))
-            self.cursor.execute(
-                "DELETE FROM categories WHERE name = ?", (category_name,))
+            self.cursor.execute("UPDATE sessions SET category = NULL WHERE category = ?", (category_name,))
+            self.cursor.execute("DELETE FROM categories WHERE name = ?", (category_name,))
             self.conn.commit()
-            logging.info(
-                f"Category '{category_name}' deleted from categories table and sessions updated.")
+            logging.info(f"Category '{category_name}' deleted from categories table and sessions updated.")
             return True
         except Exception as e:
             logging.error(f"Error deleting category '{category_name}': {e}")
@@ -1570,8 +1447,7 @@ class Database:
     def get_setting(self, key):
         """Retrieves a setting value by its key."""
         try:
-            self.cursor.execute(
-                "SELECT value FROM settings WHERE key = ?", (key,))
+            self.cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
             result = self.cursor.fetchone()
             return result[0] if result else None
         except Exception as e:
@@ -1581,8 +1457,7 @@ class Database:
     def set_setting(self, key, value):
         """Inserts or updates a setting key-value pair."""
         try:
-            self.cursor.execute(
-                "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
+            self.cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
             self.conn.commit()
             logging.info(f"Setting '{key}' set to '{value}'.")
             return True

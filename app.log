@@ -1,0 +1,72 @@
+2025-07-05 18:34:02,583 - WARNING - Could not load 'arial.ttf', using default Pillow font for tray icon.
+2025-07-05 18:34:02,604 - INFO - Tray icon created successfully.
+2025-07-05 18:34:02,605 - INFO - WorkTracker application initialized.
+2025-07-05 18:34:02,669 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-05 18:34:02,670 - INFO - Sessions table checked/created.
+2025-07-05 18:34:02,670 - INFO - Categories table checked/created.
+2025-07-05 18:34:02,670 - INFO - Settings table checked/created.
+2025-07-05 18:34:02,671 - INFO - Default category 'Work' added to categories table.
+2025-07-05 18:34:02,671 - INFO - Default category 'Skill' added to categories table.
+2025-07-05 18:34:02,672 - INFO - Default category 'School' added to categories table.
+2025-07-05 18:34:02,672 - INFO - Default categories ensured in dedicated table.
+2025-07-05 18:34:02,672 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-05 18:34:02,868 - INFO - All categories retrieved from dedicated table.
+2025-07-05 18:34:02,969 - INFO - All categories retrieved from dedicated table.
+2025-07-05 18:34:02,969 - INFO - No default category setting found or it's invalid.
+2025-07-05 18:34:43,142 - INFO - Category 'Coding' inserted into dedicated table.
+2025-07-05 18:34:43,142 - INFO - All categories retrieved from dedicated table.
+2025-07-05 18:34:54,374 - INFO - All categories retrieved from dedicated table.
+2025-07-05 18:35:02,498 - INFO - Setting 'default_category' set to 'Coding'.
+2025-07-05 18:35:04,950 - INFO - All categories retrieved from dedicated table.
+2025-07-05 18:35:04,950 - INFO - Default category 'Coding' loaded and set.
+2025-07-05 18:35:24,680 - INFO - Buttons state updated: Start=DISABLED, Pause=NORMAL, Stop=NORMAL
+2025-07-05 18:35:24,683 - INFO - Attempting to start session with category: Coding, task: working on the worktracker right now
+2025-07-05 18:35:24,683 - INFO - Session inserted. ID: 1
+2025-07-05 18:35:24,683 - INFO - Session started successfully with category: Coding, ID: 1
+2025-07-05 18:36:20,155 - INFO - Session paused.
+2025-07-05 18:36:20,989 - INFO - Session resumed.
+2025-07-05 18:36:48,817 - INFO - Session updated. ID: 1
+2025-07-05 18:36:50,967 - INFO - Session duration displayed: 0:01:23.298355
+2025-07-05 18:36:50,967 - INFO - Session stopped
+2025-07-05 20:08:39,253 - INFO - Tray icon created successfully.
+2025-07-05 20:08:39,253 - INFO - WorkTracker application initialized.
+2025-07-05 20:08:39,664 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-05 20:08:39,668 - INFO - Sessions table checked/created.
+2025-07-05 20:08:39,668 - INFO - Categories table checked/created.
+2025-07-05 20:08:39,669 - INFO - Settings table checked/created.
+2025-07-05 20:08:39,669 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-05 20:08:39,812 - ERROR - SUPABASE_URL or SUPABASE_KEY environment variables not set. Cloud sync will be unavailable.
+2025-07-05 20:10:03,744 - INFO - All categories retrieved from dedicated table.
+2025-07-05 20:10:03,746 - INFO - All categories retrieved from dedicated table.
+2025-07-05 20:10:03,746 - INFO - Default category 'Coding' loaded and set.
+2025-07-05 20:10:03,746 - INFO - Generated and stored new local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-05 20:10:03,746 - INFO - No custom display name set. Using default: User-08b60a08
+2025-07-05 20:10:03,747 - INFO - Setting 'local_unique_user_id' set to '08b60a08-c8ce-44fe-a9f0-f6d6b394432b'.
+2025-07-05 20:10:39,453 - INFO - Tray icon created successfully.
+2025-07-05 20:10:39,453 - INFO - WorkTracker application initialized.
+2025-07-05 20:10:39,533 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-05 20:10:39,534 - INFO - Sessions table checked/created.
+2025-07-05 20:10:39,534 - INFO - Categories table checked/created.
+2025-07-05 20:10:39,535 - INFO - Settings table checked/created.
+2025-07-05 20:10:39,535 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-05 20:10:39,681 - ERROR - Error initializing Supabase client: Invalid URL
+Traceback (most recent call last):
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/main.py", line 202, in _initialize_supabase_client
+    self.supabase_client: Client = create_client(supabase_url, supabase_key)
+                                   ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 369, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 101, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 59, in __init__
+    raise SupabaseException("Invalid URL")
+supabase._sync.client.SupabaseException: Invalid URL
+2025-07-05 20:10:55,428 - INFO - All categories retrieved from dedicated table.
+2025-07-05 20:10:55,429 - INFO - All categories retrieved from dedicated table.
+2025-07-05 20:10:55,429 - INFO - Default category 'Coding' loaded and set.
+2025-07-05 20:10:55,429 - INFO - No custom display name set. Using default: User-08b60a08
