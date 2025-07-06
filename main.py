@@ -1206,44 +1206,73 @@ class WorkTracker:
                 self.scorecard_label.config(text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
                 return
 
-            df['start_time'] = pd.to_datetime(df['start_time'], format='mixed')
-            df['end_time'] = pd.to_datetime(df['end_time'], format='mixed')
-            df['duration'] = (df['end_time'] - df['start_time']
+            # Data preparation - Use format='mixed' for robust datetime parsing and force UTC
+            df['start_time'] = pd.to_datetime(df['start_time'], format='mixed', utc=True, errors='coerce')
+            df['end_time'] = pd.to_datetime(df['end_time'], format='mixed', utc=True, errors='coerce')
+            
+            # Filter out sessions where either start_time or end_time could not be parsed (are NaT)
+            # or where end_time is missing (ongoing sessions)
+            df_completed = df.dropna(subset=['start_time', 'end_time']).copy()
+            
+            if df_completed.empty:
+                messagebox.showinfo("Statistics", "No completed sessions to display for the selected filters.")
+                self.scorecard_label.config(text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
+                return
+
+            df_completed['duration'] = (df_completed['end_time'] - df_completed['start_time']
                               ).dt.total_seconds()/60
 
-            df['category'] = df['category'].fillna('Uncategorized')
+            df_completed['category'] = df_completed['category'].fillna('Uncategorized')
 
             if category != "All":
-                df = df[df['category'] == category]
-                if df.empty:
-                    messagebox.showinfo("Statistics", "No data available for the selected category.")
+                df_completed = df_completed[df_completed['category'] == category]
+                if df_completed.empty:
+                    messagebox.showinfo("Statistics", "No completed sessions available for the selected category.")
                     self.scorecard_label.config(text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
                     return
 
-            now = datetime.datetime.now()
-            grouped = pd.Series([])
+
+            # --- Crucial Fix: Ensure comparison dates are timezone-aware (UTC) ---
+            now_utc = datetime.datetime.now(datetime.timezone.utc)
 
             if view == "Weeks":
-                start_of_week = now - datetime.timedelta(days=now.weekday())
-                df_filtered = df[df['start_time'] >= start_of_week]
+                # Get start of week in UTC
+                # Monday is 0, Sunday is 6 for weekday(). We want to go back to Monday.
+                # Or, if we want Sunday as start of week, use now_utc.weekday()
+                # For consistency with python's weekday (Monday=0), we'll assume Monday start of week.
+                start_of_week_utc = now_utc - datetime.timedelta(days=now_utc.weekday())
+                start_of_week_utc = start_of_week_utc.replace(hour=0, minute=0, second=0, microsecond=0) # Ensure start of day
+                
+                df_filtered = df_completed[df_completed['start_time'] >= start_of_week_utc]
                 df_filtered['day'] = df_filtered['start_time'].dt.day_name()
                 all_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
                 grouped = df_filtered.groupby('day')['duration'].sum().reindex(all_days, fill_value=0)
                 daily_average = grouped.mean()
 
             elif view == "Months":
-                df_filtered = df[(df['start_time'].dt.month == now.month) & (df['start_time'].dt.year == now.year)]
+                # Start of month in UTC
+                start_of_month_utc = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                df_filtered = df_completed[(df_completed['start_time'] >= start_of_month_utc) & (df_completed['start_time'].dt.month == now_utc.month) & (df_completed['start_time'].dt.year == now_utc.year)]
                 df_filtered['day'] = df_filtered['start_time'].dt.day
-                days_in_month = pd.date_range(start=now.replace(day=1), end=now).day
-                grouped = df_filtered.groupby('day')['duration'].sum().reindex(days_in_month, fill_value=0)
+                # Ensure all days of the month are present up to current day (in UTC context)
+                # This needs to consider the actual days in the current month, relative to UTC.
+                num_days_in_current_month = (now_utc.replace(month=now_utc.month%12+1, day=1) - datetime.timedelta(days=1)).day
+                days_in_month_range = list(range(1, num_days_in_current_month + 1)) # All days of the month
+                grouped = df_filtered.groupby('day')['duration'].sum().reindex(days_in_month_range, fill_value=0)
                 daily_average = grouped.mean()
 
             elif view == "Years":
-                df_filtered = df[df['start_time'].dt.year == now.year]
+                # Start of year in UTC
+                start_of_year_utc = now_utc.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+                df_filtered = df_completed[df_completed['start_time'] >= start_of_year_utc]
                 df_filtered['month'] = df_filtered['start_time'].dt.month_name()
                 all_months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
                 grouped = df_filtered.groupby('month')['duration'].sum().reindex(all_months, fill_value=0)
                 daily_average = grouped.mean()
+
+            # Ensure daily_average is not NaN if grouped is empty after reindex (e.g., no data for a given period)
+            if pd.isna(daily_average):
+                daily_average = 0.0
 
             if not grouped.empty and grouped.sum() > 0:
                 fig, ax = plt.subplots(figsize=(8, 4))
@@ -1257,7 +1286,7 @@ class WorkTracker:
                 canvas.get_tk_widget().grid(row=1, column=0, columnspan=2, padx=5, pady=5)
             else:
                 messagebox.showinfo("Statistics", "No work data to display for the selected period and category.")
-                daily_average = 0.0
+                daily_average = 0.0 # Ensure average is 0 if no plot
 
             self.scorecard_label.config(text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
 
