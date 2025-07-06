@@ -248,3 +248,84 @@ postgrest.exceptions.APIError: {'message': 'duplicate key value violates unique 
 2025-07-06 06:19:26,888 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/leaderboard_stats "HTTP/2 201 Created"
 2025-07-06 06:19:26,890 - INFO - Data successfully upserted to Supabase table 'leaderboard_stats': [{'id': '8defbd8f-0a27-4c1a-adc6-cdff441c123f', 'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_sessions': 4, 'longest_session_duration_minutes': 2.76, 'last_synced': '2025-07-06T05:19:26.41229+00:00'}]
 2025-07-06 06:19:28,308 - INFO - Synced daily stats for Adeolu: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_sessions': 4, 'longest_session_duration_minutes': 2.76, 'last_synced': '2025-07-06T05:19:26.412290+00:00'}
+2025-07-06 06:55:32,589 - INFO - Tray icon created successfully.
+2025-07-06 06:55:32,590 - INFO - WorkTracker application initialized.
+2025-07-06 06:55:32,667 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 06:55:32,669 - INFO - Sessions table checked/created.
+2025-07-06 06:55:32,669 - INFO - Categories table checked/created.
+2025-07-06 06:55:32,669 - INFO - Settings table checked/created.
+2025-07-06 06:55:32,669 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 06:55:32,816 - INFO - Attempting to initialize Supabase client.
+2025-07-06 06:55:32,816 - INFO - SUPABASE_URL (from env): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-06 06:55:32,816 - INFO - SUPABASE_KEY (from env): 'eyJhb...'
+2025-07-06 06:55:32,887 - INFO - Supabase client created successfully.
+2025-07-06 06:55:32,887 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-06 06:55:32,887 - INFO - All categories retrieved from dedicated table.
+2025-07-06 06:55:32,966 - INFO - All categories retrieved from dedicated table.
+2025-07-06 06:55:32,966 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 06:55:33,066 - INFO - Display name loaded: Adeolu
+2025-07-06 06:56:38,984 - INFO - Buttons state updated: Start=DISABLED, Pause=NORMAL, Stop=NORMAL
+2025-07-06 06:56:38,987 - INFO - Attempting to start session with category: Coding, task: Work Tracker - Showing total session duration instead of total number of sessions
+2025-07-06 06:56:38,988 - INFO - Session inserted. ID: 7
+2025-07-06 06:56:38,989 - INFO - Session started successfully with category: Coding, ID: 7
+2025-07-06 06:57:18,138 - INFO - Session updated. ID: 7
+2025-07-06 06:57:20,107 - INFO - Session duration displayed: 0:00:39.151829
+2025-07-06 06:57:20,107 - INFO - Session stopped
+2025-07-06 06:57:35,734 - INFO - Buttons state updated: Start=DISABLED, Pause=NORMAL, Stop=NORMAL
+2025-07-06 06:57:35,736 - INFO - Attempting to start session with category: Coding, task: Work Tracker - Second Test
+2025-07-06 06:57:35,736 - INFO - Session inserted. ID: 8
+2025-07-06 06:57:35,736 - INFO - Session started successfully with category: Coding, ID: 8
+2025-07-06 07:00:50,631 - INFO - Session updated. ID: 8
+2025-07-06 07:00:52,558 - INFO - Session duration displayed: 0:03:14.893558
+2025-07-06 07:00:52,558 - INFO - Session stopped
+2025-07-06 07:00:58,580 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND start_time >= ? AND start_time <= ? ORDER BY start_time DESC, Params: ['2025-07-05T23:00:00+00:00', '2025-07-06T22:59:59.999999+00:00']
+2025-07-06 07:00:59,388 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/leaderboard_stats "HTTP/2 400 Bad Request"
+2025-07-06 07:00:59,391 - ERROR - Error sending data to Supabase table 'leaderboard_stats': {'message': "Could not find the 'total_duration_minutes' column of 'leaderboard_stats' in the schema cache", 'code': 'PGRST204', 'hint': None, 'details': None}
+Traceback (most recent call last):
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/main.py", line 258, in _send_supabase_data
+    response = self.supabase_client.table(table_name).upsert(data).execute()
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(dict(json_obj))
+postgrest.exceptions.APIError: {'message': "Could not find the 'total_duration_minutes' column of 'leaderboard_stats' in the schema cache", 'code': 'PGRST204', 'hint': None, 'details': None}
+2025-07-06 07:01:02,026 - ERROR - Failed to sync daily stats for Adeolu
+2025-07-06 09:35:09,353 - INFO - Tray icon created successfully.
+2025-07-06 09:35:09,353 - INFO - WorkTracker application initialized.
+2025-07-06 09:35:09,433 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 09:35:09,434 - INFO - Sessions table checked/created.
+2025-07-06 09:35:09,434 - INFO - Categories table checked/created.
+2025-07-06 09:35:09,434 - INFO - Settings table checked/created.
+2025-07-06 09:35:09,434 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 09:35:09,581 - INFO - Attempting to initialize Supabase client.
+2025-07-06 09:35:09,581 - INFO - SUPABASE_URL (from env): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-06 09:35:09,581 - INFO - SUPABASE_KEY (from env): 'eyJhb...'
+2025-07-06 09:35:09,656 - INFO - Supabase client created successfully.
+2025-07-06 09:35:09,656 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-06 09:35:09,657 - INFO - All categories retrieved from dedicated table.
+2025-07-06 09:35:09,731 - INFO - All categories retrieved from dedicated table.
+2025-07-06 09:35:09,731 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 09:35:09,831 - INFO - Display name loaded: Adeolu
+2025-07-06 09:35:20,669 - INFO - All categories retrieved from dedicated table.
+2025-07-06 09:35:20,670 - INFO - Sessions retrieved
+2025-07-06 09:35:58,342 - INFO - Buttons state updated: Start=DISABLED, Pause=NORMAL, Stop=NORMAL
+2025-07-06 09:35:58,345 - INFO - Attempting to start session with category: Coding, task: work tracker - made some minor changes to the table
+2025-07-06 09:35:58,346 - INFO - Session inserted. ID: 9
+2025-07-06 09:35:58,346 - INFO - Session started successfully with category: Coding, ID: 9
+2025-07-06 09:36:13,710 - INFO - Session updated. ID: 9
+2025-07-06 09:36:15,208 - INFO - Session duration displayed: 0:00:15.367408
+2025-07-06 09:36:15,208 - INFO - Session stopped
+2025-07-06 09:36:19,410 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND start_time >= ? AND start_time <= ? ORDER BY start_time DESC, Params: ['2025-07-05T23:00:00+00:00', '2025-07-06T22:59:59.999999+00:00']
+2025-07-06 09:36:20,327 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/leaderboard_stats "HTTP/2 400 Bad Request"
+2025-07-06 09:36:20,329 - ERROR - Error sending data to Supabase table 'leaderboard_stats': {'message': "Could not find the 'total_duration_minutes' column of 'leaderboard_stats' in the schema cache", 'code': 'PGRST204', 'hint': None, 'details': None}
+Traceback (most recent call last):
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/main.py", line 258, in _send_supabase_data
+    response = self.supabase_client.table(table_name).upsert(data).execute()
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(dict(json_obj))
+postgrest.exceptions.APIError: {'message': "Could not find the 'total_duration_minutes' column of 'leaderboard_stats' in the schema cache", 'code': 'PGRST204', 'hint': None, 'details': None}
+2025-07-06 09:36:23,491 - ERROR - Failed to sync daily stats for Adeolu
+2025-07-06 09:40:16,148 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND start_time >= ? AND start_time <= ? ORDER BY start_time DESC, Params: ['2025-07-05T23:00:00+00:00', '2025-07-06T22:59:59.999999+00:00']
+2025-07-06 09:40:16,750 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/leaderboard_stats "HTTP/2 201 Created"
+2025-07-06 09:40:16,764 - INFO - Data successfully upserted to Supabase table 'leaderboard_stats': [{'id': '7d0310be-d94c-4c73-8a90-2a3f8a14286f', 'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_duration_minutes': 7.86, 'longest_session_duration_minutes': 3.25, 'last_synced': '2025-07-06T08:40:16.150871+00:00'}]
+2025-07-06 09:40:19,394 - INFO - Synced daily stats for Adeolu: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_duration_minutes': 7.86, 'longest_session_duration_minutes': 3.25, 'last_synced': '2025-07-06T08:40:16.150871+00:00'}
+2025-07-06 09:41:07,216 - INFO - All categories retrieved from dedicated table.
+2025-07-06 09:41:07,218 - INFO - Sessions retrieved
