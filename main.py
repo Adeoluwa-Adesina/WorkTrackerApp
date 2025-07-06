@@ -466,7 +466,7 @@ class WorkTracker:
         if not local_user_id:
             local_user_id = str(uuid.uuid4())
             self.send_db_command('set_setting', ('local_unique_user_id', local_user_id), expect_result=False)
-            logging.info(f"Generated and stored new local_unique_user_id: {local_user_id}")
+            logging.info(f"Generated new local_unique_user_id: {local_user_id}")
         self.supabase_user_id = local_user_id # This ID is used for Supabase sync
 
         if not self.display_name:
@@ -481,8 +481,7 @@ class WorkTracker:
         display_name_dialog = tk.Toplevel(self.root)
         display_name_dialog.title("Set Display Name")
         display_name_dialog.transient(self.root)
-        # Corrected line: Use display_name_dialog instead of display_dialog
-        display_name_dialog.grab_set() 
+        display_name_dialog.grab_set() # Corrected from display_dialog.grab_set()
 
         form_frame = ttk.Frame(display_name_dialog, padding=10)
         form_frame.pack(padx=10, pady=10)
@@ -613,10 +612,10 @@ class WorkTracker:
         daily_stats_data = {
             'user_id': self.supabase_user_id, # Use the consistent local Supabase user ID
             'display_name': self.display_name,
-            'stat_date': today.isoformat(), # Jamboree-MM-DD
+            'stat_date': today.isoformat(), # YYYY-MM-DD
             'total_sessions': total_sessions_today,
             'longest_session_duration_minutes': round(longest_session_duration_minutes, 2),
-            'last_synced': datetime.datetime.now().isoformat()
+            'last_synced': datetime.datetime.now(datetime.timezone.utc).isoformat() # Explicitly UTC
         }
 
         # Send data to Supabase leaderboard_stats table
@@ -1313,8 +1312,9 @@ class Database:
 
     def insert_session(self, start_time, end_time, category, notes):
         try:
-            start_time_str = start_time.strftime('%Y-%m-%d %H:%M:%S.%f') if start_time else None
-            end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S.%f') if end_time else None
+            # Convert to UTC before storing
+            start_time_str = start_time.astimezone(datetime.timezone.utc).isoformat() if start_time else None
+            end_time_str = end_time.astimezone(datetime.timezone.utc).isoformat() if end_time else None
 
             self.cursor.execute("""
                 INSERT INTO sessions (start_time, end_time, category, notes) VALUES (?,?,?,?)
@@ -1329,7 +1329,8 @@ class Database:
 
     def update_session(self, session_id, end_time, notes):
         try:
-            end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S.%f') if end_time else None
+            # Convert to UTC before storing
+            end_time_str = end_time.astimezone(datetime.timezone.utc).isoformat() if end_time else None
 
             self.cursor.execute("""
                 UPDATE sessions
@@ -1345,8 +1346,9 @@ class Database:
     def update_full_session(self, session_id, start_time, end_time, category, notes):
         """Updates all fields of a session in the database."""
         try:
-            start_time_str = start_time.strftime('%Y-%m-%d %H:%M:%S.%f') if start_time else None
-            end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S.%f') if end_time else None
+            # Convert to UTC before storing
+            start_time_str = start_time.astimezone(datetime.timezone.utc).isoformat() if start_time else None
+            end_time_str = end_time.astimezone(datetime.timezone.utc).isoformat() if end_time else None
 
             self.cursor.execute("""
                 UPDATE sessions
@@ -1390,12 +1392,12 @@ class Database:
 
             if start_date:
                 query += " AND start_time >= ?"
-                params.append(start_date.strftime('%Y-%m-%d %H:%M:%S.%f'))
+                params.append(start_date.astimezone(datetime.timezone.utc).isoformat() if start_date.tzinfo is None else start_date.isoformat())
             if end_date:
                 query += " AND start_time <= ?"
                 if end_date.hour == 0 and end_date.minute == 0 and end_date.second == 0:
                     end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-                params.append(end_date.strftime('%Y-%m-%d %H:%M:%S.%f'))
+                params.append(end_date.astimezone(datetime.timezone.utc).isoformat() if end_date.tzinfo is None else end_date.isoformat())
 
             if category and category != "All":
                 if category == "Uncategorized":

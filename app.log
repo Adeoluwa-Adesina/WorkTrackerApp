@@ -206,3 +206,45 @@ postgrest.exceptions.APIError: {'message': 'duplicate key value violates unique 
 2025-07-06 05:58:25,959 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/leaderboard_stats "HTTP/2 201 Created"
 2025-07-06 05:58:25,970 - INFO - Data successfully upserted to Supabase table 'leaderboard_stats': [{'id': 'ba9590e2-55e4-4bf1-9d4c-94d3e40587c4', 'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_sessions': 3, 'longest_session_duration_minutes': 2.76, 'last_synced': '2025-07-06T05:58:25.167643+00:00'}]
 2025-07-06 05:58:28,691 - INFO - Synced daily stats for Adeolu: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_sessions': 3, 'longest_session_duration_minutes': 2.76, 'last_synced': '2025-07-06T05:58:25.167643'}
+2025-07-06 06:16:35,378 - INFO - Tray icon created successfully.
+2025-07-06 06:16:35,379 - INFO - WorkTracker application initialized.
+2025-07-06 06:16:35,456 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 06:16:35,457 - INFO - Sessions table checked/created.
+2025-07-06 06:16:35,457 - INFO - Categories table checked/created.
+2025-07-06 06:16:35,457 - INFO - Settings table checked/created.
+2025-07-06 06:16:35,457 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 06:16:35,604 - INFO - Attempting to initialize Supabase client.
+2025-07-06 06:16:35,604 - INFO - SUPABASE_URL (from env): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-06 06:16:35,604 - INFO - SUPABASE_KEY (from env): 'eyJhb...'
+2025-07-06 06:16:35,678 - INFO - Supabase client created successfully.
+2025-07-06 06:16:35,678 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-06 06:16:35,679 - INFO - All categories retrieved from dedicated table.
+2025-07-06 06:16:35,754 - INFO - All categories retrieved from dedicated table.
+2025-07-06 06:16:35,754 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 06:16:35,854 - INFO - Display name loaded: Adeolu
+2025-07-06 06:17:21,682 - INFO - Buttons state updated: Start=DISABLED, Pause=NORMAL, Stop=NORMAL
+2025-07-06 06:17:21,683 - INFO - Attempting to start session with category: Coding, task: working on work tracker - resolving timezone issue
+2025-07-06 06:17:21,685 - INFO - Session inserted. ID: 6
+2025-07-06 06:17:21,685 - INFO - Session started successfully with category: Coding, ID: 6
+2025-07-06 06:17:42,014 - INFO - Session updated. ID: 6
+2025-07-06 06:17:43,529 - INFO - Session duration displayed: 0:00:20.331861
+2025-07-06 06:17:43,529 - INFO - Session stopped
+2025-07-06 06:17:44,415 - INFO - All categories retrieved from dedicated table.
+2025-07-06 06:17:44,415 - INFO - Sessions retrieved
+2025-07-06 06:18:10,999 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND start_time >= ? AND start_time <= ? ORDER BY start_time DESC, Params: ['2025-07-05T23:00:00+00:00', '2025-07-06T22:59:59.999999+00:00']
+2025-07-06 06:18:11,755 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/leaderboard_stats "HTTP/2 201 Created"
+2025-07-06 06:18:11,765 - INFO - Data successfully upserted to Supabase table 'leaderboard_stats': [{'id': 'dc701d63-dc8c-44a8-8f4f-0e280dcf7b9b', 'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_sessions': 4, 'longest_session_duration_minutes': 2.76, 'last_synced': '2025-07-06T05:18:11.002228+00:00'}]
+2025-07-06 06:18:14,077 - INFO - Synced daily stats for Adeolu: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_sessions': 4, 'longest_session_duration_minutes': 2.76, 'last_synced': '2025-07-06T05:18:11.002228+00:00'}
+2025-07-06 06:18:20,356 - INFO - All categories retrieved from dedicated table.
+2025-07-06 06:18:20,357 - INFO - Sessions retrieved
+2025-07-06 06:18:34,606 - INFO - All categories retrieved from dedicated table.
+2025-07-06 06:18:34,610 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 ORDER BY start_time DESC, Params: []
+2025-07-06 06:18:54,106 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND (notes LIKE ? OR category LIKE ?) ORDER BY start_time DESC, Params: ['%coding%', '%coding%']
+2025-07-06 06:18:55,489 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND (notes LIKE ? OR category LIKE ?) ORDER BY start_time DESC, Params: ['%coding%', '%coding%']
+2025-07-06 06:18:57,805 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND (notes LIKE ? OR category LIKE ?) ORDER BY start_time DESC, Params: ['%coding%', '%coding%']
+2025-07-06 06:18:58,389 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND (notes LIKE ? OR category LIKE ?) ORDER BY start_time DESC, Params: ['%coding%', '%coding%']
+2025-07-06 06:19:12,888 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND (notes LIKE ? OR category LIKE ?) ORDER BY start_time DESC, Params: ['%right now%', '%right now%']
+2025-07-06 06:19:26,411 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND start_time >= ? AND start_time <= ? ORDER BY start_time DESC, Params: ['2025-07-05T23:00:00+00:00', '2025-07-06T22:59:59.999999+00:00']
+2025-07-06 06:19:26,888 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/leaderboard_stats "HTTP/2 201 Created"
+2025-07-06 06:19:26,890 - INFO - Data successfully upserted to Supabase table 'leaderboard_stats': [{'id': '8defbd8f-0a27-4c1a-adc6-cdff441c123f', 'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_sessions': 4, 'longest_session_duration_minutes': 2.76, 'last_synced': '2025-07-06T05:19:26.41229+00:00'}]
+2025-07-06 06:19:28,308 - INFO - Synced daily stats for Adeolu: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_sessions': 4, 'longest_session_duration_minutes': 2.76, 'last_synced': '2025-07-06T05:19:26.412290+00:00'}
