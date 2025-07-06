@@ -1621,3 +1621,96 @@ httpx.ConnectError: [Errno 54] Connection reset by peer
 2025-07-06 15:06:59,824 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
 2025-07-06 15:06:59,825 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:06:59.337295+00:00'}]
 2025-07-06 15:06:59,825 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:17:32,932 - INFO - Tray icon created successfully.
+2025-07-06 15:17:32,933 - INFO - WorkTracker application initialized.
+2025-07-06 15:17:33,013 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 15:17:33,014 - INFO - Sessions table checked/created.
+2025-07-06 15:17:33,015 - INFO - Categories table checked/created.
+2025-07-06 15:17:33,015 - INFO - Settings table checked/created.
+2025-07-06 15:17:33,015 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 15:17:33,162 - INFO - Attempting to initialize Supabase client.
+2025-07-06 15:17:33,162 - INFO - SUPABASE_URL (from env): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-06 15:17:33,162 - INFO - SUPABASE_KEY (from env): 'eyJhb...'
+2025-07-06 15:17:33,236 - INFO - Supabase client created successfully.
+2025-07-06 15:17:33,236 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-06 15:17:33,237 - INFO - All categories retrieved from dedicated table.
+2025-07-06 15:17:33,312 - INFO - All categories retrieved from dedicated table.
+2025-07-06 15:17:33,312 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 15:17:33,412 - INFO - Display name loaded: Adeolu
+2025-07-06 15:17:38,012 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:17:38.012156+00:00'}
+2025-07-06 15:17:38,570 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:17:38,572 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:17:38.012156+00:00'}]
+2025-07-06 15:17:38,572 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:18:08,573 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:18:08.573294+00:00'}
+2025-07-06 15:18:09,144 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:18:09,145 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:18:08.573294+00:00'}]
+2025-07-06 15:18:09,145 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:18:10,294 - INFO - HTTP Request: GET https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status?select=%2A "HTTP/2 200 OK"
+2025-07-06 15:18:39,146 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:18:39.145892+00:00'}
+2025-07-06 15:18:39,630 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:18:39,630 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:18:39.145892+00:00'}]
+2025-07-06 15:18:39,630 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:19:09,631 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:19:09.631350+00:00'}
+2025-07-06 15:19:10,280 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:19:10,281 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:19:09.63135+00:00'}]
+2025-07-06 15:19:10,281 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:19:40,281 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:19:40.281563+00:00'}
+2025-07-06 15:19:40,786 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:19:40,786 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:19:40.281563+00:00'}]
+2025-07-06 15:19:40,786 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:20:10,787 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:20:10.787317+00:00'}
+2025-07-06 15:20:11,394 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:20:11,396 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:20:10.787317+00:00'}]
+2025-07-06 15:20:11,396 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:20:41,397 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:20:41.397314+00:00'}
+2025-07-06 15:20:42,315 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:20:42,315 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:20:41.397314+00:00'}]
+2025-07-06 15:20:42,315 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:21:12,316 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:21:12.316295+00:00'}
+2025-07-06 15:21:12,817 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:21:12,818 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:21:12.316295+00:00'}]
+2025-07-06 15:21:12,818 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:21:42,819 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:21:42.818803+00:00'}
+2025-07-06 15:21:43,901 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:21:43,911 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:21:42.818803+00:00'}]
+2025-07-06 15:21:43,911 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:22:13,912 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:22:13.912102+00:00'}
+2025-07-06 15:22:18,887 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:22:18,954 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:22:13.912102+00:00'}]
+2025-07-06 15:22:18,954 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:22:48,955 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:22:48.955232+00:00'}
+2025-07-06 15:22:49,513 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:22:49,514 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:22:48.955232+00:00'}]
+2025-07-06 15:22:49,514 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:23:19,514 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:23:19.514670+00:00'}
+2025-07-06 15:23:19,995 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:23:20,007 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:23:19.51467+00:00'}]
+2025-07-06 15:23:20,007 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:23:50,008 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:23:50.008581+00:00'}
+2025-07-06 15:23:50,690 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:23:50,691 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:23:50.008581+00:00'}]
+2025-07-06 15:23:50,691 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:24:20,691 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:24:20.691703+00:00'}
+2025-07-06 15:24:23,140 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:24:23,140 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:24:20.691703+00:00'}]
+2025-07-06 15:24:23,140 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:24:53,141 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:24:53.140970+00:00'}
+2025-07-06 15:24:53,825 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:24:53,825 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:24:53.14097+00:00'}]
+2025-07-06 15:24:53,825 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:25:23,826 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:25:23.826317+00:00'}
+2025-07-06 15:25:27,979 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:25:28,014 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:25:23.826317+00:00'}]
+2025-07-06 15:25:28,014 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:25:58,015 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:25:58.015284+00:00'}
+2025-07-06 15:26:01,097 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:26:01,120 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:25:58.015284+00:00'}]
+2025-07-06 15:26:01,120 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:26:31,120 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:26:31.120626+00:00'}
+2025-07-06 15:26:35,271 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:26:35,282 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:26:31.120626+00:00'}]
+2025-07-06 15:26:35,282 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 15:27:05,282 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:27:05.282831+00:00'}
+2025-07-06 15:27:07,812 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 15:27:07,831 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:27:05.282831+00:00'}]
+2025-07-06 15:27:07,831 - INFO - Heartbeat sent to cloud successfully.

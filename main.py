@@ -878,16 +878,8 @@ class WorkTracker:
         body = (
             f"Hey {selected_display_name},\n\n"
             f"I'm online and down for a co-work session! Join me here: {meet_link}\n\n"
-            f"Let me know if you're free.\n\n"
+            f"Let's get some work done!\n\n" # More direct call to action
             f"Best,\n{self.display_name}"
-        )
-
-        # Offer choice for sending method
-        choice = messagebox.askyesno(
-            "Send Invitation",
-            f"Invite {selected_display_name} to co-work:\n\n"
-            f"Via Email (opens default email client)?\n"
-            f"Click 'Yes' for Email, 'No' for WhatsApp (manual paste)."
         )
 
         # Use urllib.parse.quote for robust URL encoding of the body (spaces as %20)
@@ -895,27 +887,14 @@ class WorkTracker:
         encoded_subject = urllib.parse.quote_plus(subject)
         encoded_body = urllib.parse.quote(body) # Changed to quote for spaces as %20
 
-        if choice: # User chose Email
-            try:
-                # Mailto link with subject and body
-                webbrowser.open_new_tab(f'mailto:?subject={encoded_subject}&body={encoded_body}')
-                messagebox.showinfo("Invitation Sent", f"Your email client has been opened with an invitation for {selected_display_name}. Please send it manually.")
-            except Exception as e:
-                logging.error(f"Failed to open email client: {e}", exc_info=True)
-                messagebox.showerror("Error", "Could not open email client. Please try manually.")
-        else: # User chose WhatsApp
-            try:
-                # Open WhatsApp Web and provide instructions to paste
-                webbrowser.open_new_tab("https://web.whatsapp.com/")
-                messagebox.showinfo(
-                    "Invitation Sent",
-                    f"WhatsApp Web has been opened. Please find {selected_display_name} and paste the following message:\n\n"
-                    f"Subject: {subject}\n\n{body}\n\n"
-                    f"(Google Meet Link: {meet_link})"
-                )
-            except Exception as e:
-                logging.error(f"Failed to open WhatsApp Web: {e}", exc_info=True)
-                messagebox.showerror("Error", "Could not open WhatsApp Web. Please try manually.")
+        # Directly open email client, removing the choice dialog
+        try:
+            # Mailto link with subject and body
+            webbrowser.open_new_tab(f'mailto:?subject={encoded_subject}&body={encoded_body}')
+            messagebox.showinfo("Invitation Sent", f"Your email client has been opened with an invitation for {selected_display_name}. Please send it manually.")
+        except Exception as e:
+            logging.error(f"Failed to open email client: {e}", exc_info=True)
+            messagebox.showerror("Error", "Could not open email client. Please try manually.")
 
 
     def update_stopwatch(self):
