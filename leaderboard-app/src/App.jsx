@@ -120,19 +120,55 @@ const useSupabaseLeaderboard = () => {
     }
   };
 
-  return { fetchLeaderboardStats };
+  // New function to fetch online status
+  const fetchOnlineStatus = async () => {
+    if (!supabase || !isSupabaseReady) {
+      console.warn("Supabase client not ready for online status fetch.");
+      return [];
+    }
+    try {
+      // Define online threshold (e.g., last 60 seconds)
+      const onlineThreshold = new Date(new Date().getTime() - (60 * 1000)).toISOString(); // 60 seconds ago in ISO UTC
+      
+      // Fetch users active within the last 60 seconds
+      // Note: Supabase's client-side filtering by timestamp might require a custom RPC for robust server-side filtering
+      // For simplicity, we'll fetch all and filter client-side.
+      const { data, error } = await supabase.from('online_status').select('*');
+
+      if (error) {
+        console.error("Error fetching online status:", error);
+        return [];
+      }
+
+      const onlineUsers = data.filter(user => {
+        return user.last_active_at && new Date(user.last_active_at).getTime() >= new Date(onlineThreshold).getTime();
+      });
+      
+      console.log("Fetched online users:", onlineUsers);
+      return onlineUsers.map(user => user.user_id); // Return just user_ids of online users
+
+    } catch (e) {
+      console.error("Supabase online status query error:", e);
+      return [];
+    }
+  };
+
+
+  return { fetchLeaderboardStats, fetchOnlineStatus };
 };
 
 
 // --- Leaderboard App Component ---
 const App = () => {
   const { isSupabaseReady } = useContext(SupabaseContext);
-  const { fetchLeaderboardStats } = useSupabaseLeaderboard();
+  const { fetchLeaderboardStats, fetchOnlineStatus } = useSupabaseLeaderboard();
 
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [dateFilter, setDateFilter] = useState('today'); // 'today', 'yesterday', 'all_time'
   const [sortBy, setSortBy] = useState('totalSessions'); // 'totalSessions', 'longestSession'
+  const [onlineUserIds, setOnlineUserIds] = useState([]); // New state for online user IDs
 
+  // Effect to load leaderboard data
   useEffect(() => {
     if (isSupabaseReady) {
       const loadData = async () => {
@@ -144,6 +180,22 @@ const App = () => {
       loadData();
     }
   }, [isSupabaseReady, dateFilter, sortBy]); // Re-fetch when filters/sort change
+
+  // Effect to load online status periodically
+  useEffect(() => {
+    if (isSupabaseReady) {
+      const loadOnlineStatus = async () => {
+        const ids = await fetchOnlineStatus();
+        setOnlineUserIds(ids);
+      };
+      
+      // Load immediately and then every 30 seconds
+      loadOnlineStatus();
+      const intervalId = setInterval(loadOnlineStatus, 30000); // Refresh every 30 seconds
+
+      return () => clearInterval(intervalId); // Cleanup interval on unmount
+    }
+  }, [isSupabaseReady]); // Only depends on isSupabaseReady
 
   // Function to format duration for display
   const formatDuration = (minutes) => {
@@ -165,7 +217,7 @@ const App = () => {
     return formatted.trim();
   };
 
-  // Function to format total duration specifically for display
+  // Function to format total duration specifically for display (e.g., 1h 30m)
   const formatTotalDuration = (minutes) => {
     if (typeof minutes !== 'number' || isNaN(minutes)) return 'N/A';
     const totalSeconds = Math.round(minutes * 60);
@@ -230,7 +282,6 @@ const App = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                {/* Changed header to reflect new metric */}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Duration</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Longest Session</th>
               </tr>
@@ -245,9 +296,13 @@ const App = () => {
                 leaderboardData.map((data, index) => (
                   <tr key={data.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{data.display_name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 flex items-center">
+                      {data.display_name}
+                      {onlineUserIds.includes(data.user_id) && (
+                        <span className="ml-2 h-2 w-2 bg-green-500 rounded-full animate-pulse" title="Online"></span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{data.stat_date}</td>
-                    {/* Display formatted total duration */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatTotalDuration(data.total_duration_minutes)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDuration(data.longest_session_duration_minutes)}</td>
                   </tr>
