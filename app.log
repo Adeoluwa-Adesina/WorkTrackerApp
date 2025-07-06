@@ -422,3 +422,125 @@ postgrest.exceptions.APIError: {'message': "Could not find the 'total_duration_m
 2025-07-06 10:12:04,709 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/leaderboard_stats "HTTP/2 200 OK"
 2025-07-06 10:12:04,709 - INFO - Data successfully upserted to Supabase table 'leaderboard_stats': [{'id': '30c85eb9-002c-4a44-bc9d-205b5be05a4f', 'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_duration_minutes': 9.38, 'longest_session_duration_minutes': 3.25, 'last_synced': '2025-07-06T09:12:04.21316+00:00'}]
 2025-07-06 10:12:36,058 - INFO - Synced daily stats for Adeolu: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_duration_minutes': 9.38, 'longest_session_duration_minutes': 3.25, 'last_synced': '2025-07-06T09:12:04.213160+00:00'}
+2025-07-06 11:08:36,709 - INFO - Tray icon created successfully.
+2025-07-06 11:08:36,710 - INFO - WorkTracker application initialized.
+2025-07-06 11:08:36,788 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 11:08:36,789 - INFO - Sessions table checked/created.
+2025-07-06 11:08:36,789 - INFO - Categories table checked/created.
+2025-07-06 11:08:36,789 - INFO - Settings table checked/created.
+2025-07-06 11:08:36,789 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 11:08:36,935 - INFO - Attempting to initialize Supabase client.
+2025-07-06 11:08:36,936 - INFO - SUPABASE_URL (from env): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-06 11:08:36,936 - INFO - SUPABASE_KEY (from env): 'eyJhb...'
+2025-07-06 11:08:37,008 - INFO - Supabase client created successfully.
+2025-07-06 11:08:37,008 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-06 11:08:37,009 - INFO - All categories retrieved from dedicated table.
+2025-07-06 11:08:37,086 - INFO - All categories retrieved from dedicated table.
+2025-07-06 11:08:37,086 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 11:08:37,185 - INFO - Display name loaded: Adeolu
+2025-07-06 11:08:41,787 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:08:41.786149+00:00'}
+2025-07-06 11:08:42,695 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 201 Created"
+2025-07-06 11:08:42,696 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:08:41.786149+00:00'}]
+2025-07-06 11:08:42,697 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 11:08:49,274 - INFO - HTTP Request: GET https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status?select=%2A "HTTP/2 200 OK"
+2025-07-06 11:09:12,697 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:09:12.697283+00:00'}
+2025-07-06 11:09:13,430 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 401 Unauthorized"
+2025-07-06 11:09:13,433 - ERROR - Error sending data to Supabase table 'online_status': {'message': 'new row violates row-level security policy (USING expression) for table "online_status"', 'code': '42501', 'hint': None, 'details': None}
+Traceback (most recent call last):
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/main.py", line 262, in _send_supabase_data
+    response = self.supabase_client.table(table_name).upsert(data).execute()
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(dict(json_obj))
+postgrest.exceptions.APIError: {'message': 'new row violates row-level security policy (USING expression) for table "online_status"', 'code': '42501', 'hint': None, 'details': None}
+2025-07-06 11:09:13,436 - ERROR - Failed to send heartbeat to cloud.
+2025-07-06 11:27:30,502 - INFO - Tray icon created successfully.
+2025-07-06 11:27:30,503 - INFO - WorkTracker application initialized.
+2025-07-06 11:27:30,585 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 11:27:30,586 - INFO - Sessions table checked/created.
+2025-07-06 11:27:30,586 - INFO - Categories table checked/created.
+2025-07-06 11:27:30,586 - INFO - Settings table checked/created.
+2025-07-06 11:27:30,586 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 11:27:30,733 - INFO - Attempting to initialize Supabase client.
+2025-07-06 11:27:30,733 - INFO - SUPABASE_URL (from env): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-06 11:27:30,733 - INFO - SUPABASE_KEY (from env): 'eyJhb...'
+2025-07-06 11:27:30,803 - INFO - Supabase client created successfully.
+2025-07-06 11:27:30,804 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-06 11:27:30,804 - INFO - All categories retrieved from dedicated table.
+2025-07-06 11:27:30,883 - INFO - All categories retrieved from dedicated table.
+2025-07-06 11:27:30,884 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 11:27:30,983 - INFO - Display name loaded: Adeolu
+2025-07-06 11:27:35,585 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:27:35.583888+00:00'}
+2025-07-06 11:27:37,903 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 401 Unauthorized"
+2025-07-06 11:27:37,913 - ERROR - Error sending data to Supabase table 'online_status': {'message': 'new row violates row-level security policy for table "online_status"', 'code': '42501', 'hint': None, 'details': None}
+Traceback (most recent call last):
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/main.py", line 262, in _send_supabase_data
+    response = self.supabase_client.table(table_name).upsert(data).execute()
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(dict(json_obj))
+postgrest.exceptions.APIError: {'message': 'new row violates row-level security policy for table "online_status"', 'code': '42501', 'hint': None, 'details': None}
+2025-07-06 11:27:37,914 - ERROR - Failed to send heartbeat to cloud.
+2025-07-06 11:27:43,547 - INFO - HTTP Request: GET https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status?select=%2A "HTTP/2 200 OK"
+2025-07-06 11:28:04,589 - INFO - HTTP Request: GET https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status?select=%2A "HTTP/2 200 OK"
+2025-07-06 11:28:07,915 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:28:07.914864+00:00'}
+2025-07-06 11:28:08,107 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 401 Unauthorized"
+2025-07-06 11:28:08,108 - ERROR - Error sending data to Supabase table 'online_status': {'message': 'new row violates row-level security policy for table "online_status"', 'code': '42501', 'hint': None, 'details': None}
+Traceback (most recent call last):
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/main.py", line 262, in _send_supabase_data
+    response = self.supabase_client.table(table_name).upsert(data).execute()
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(dict(json_obj))
+postgrest.exceptions.APIError: {'message': 'new row violates row-level security policy for table "online_status"', 'code': '42501', 'hint': None, 'details': None}
+2025-07-06 11:28:08,109 - ERROR - Failed to send heartbeat to cloud.
+2025-07-06 11:31:30,373 - INFO - Tray icon created successfully.
+2025-07-06 11:31:30,374 - INFO - WorkTracker application initialized.
+2025-07-06 11:31:30,455 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 11:31:30,457 - INFO - Sessions table checked/created.
+2025-07-06 11:31:30,457 - INFO - Categories table checked/created.
+2025-07-06 11:31:30,457 - INFO - Settings table checked/created.
+2025-07-06 11:31:30,457 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 11:31:30,604 - INFO - Attempting to initialize Supabase client.
+2025-07-06 11:31:30,604 - INFO - SUPABASE_URL (from env): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-06 11:31:30,604 - INFO - SUPABASE_KEY (from env): 'eyJhb...'
+2025-07-06 11:31:30,676 - INFO - Supabase client created successfully.
+2025-07-06 11:31:30,676 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-06 11:31:30,676 - INFO - All categories retrieved from dedicated table.
+2025-07-06 11:31:30,755 - INFO - All categories retrieved from dedicated table.
+2025-07-06 11:31:30,755 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 11:31:30,855 - INFO - Display name loaded: Adeolu
+2025-07-06 11:31:35,456 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:31:35.455370+00:00'}
+2025-07-06 11:31:36,103 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 11:31:36,105 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:31:35.45537+00:00'}]
+2025-07-06 11:31:36,105 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 11:32:06,106 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:32:06.106149+00:00'}
+2025-07-06 11:32:06,615 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 11:32:06,616 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:32:06.106149+00:00'}]
+2025-07-06 11:32:06,616 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 11:32:36,617 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:32:36.617191+00:00'}
+2025-07-06 11:32:37,178 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 11:32:37,178 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:32:36.617191+00:00'}]
+2025-07-06 11:32:37,178 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 11:34:16,028 - INFO - Tray icon created successfully.
+2025-07-06 11:34:16,028 - INFO - WorkTracker application initialized.
+2025-07-06 11:34:16,113 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 11:34:16,114 - INFO - Sessions table checked/created.
+2025-07-06 11:34:16,114 - INFO - Categories table checked/created.
+2025-07-06 11:34:16,114 - INFO - Settings table checked/created.
+2025-07-06 11:34:16,114 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 11:34:16,261 - INFO - Attempting to initialize Supabase client.
+2025-07-06 11:34:16,261 - INFO - SUPABASE_URL (from env): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-06 11:34:16,261 - INFO - SUPABASE_KEY (from env): 'eyJhb...'
+2025-07-06 11:34:16,334 - INFO - Supabase client created successfully.
+2025-07-06 11:34:16,334 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-06 11:34:16,335 - INFO - All categories retrieved from dedicated table.
+2025-07-06 11:34:16,411 - INFO - All categories retrieved from dedicated table.
+2025-07-06 11:34:16,412 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 11:34:16,512 - INFO - Display name loaded: Adeolu
+2025-07-06 11:34:21,112 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:34:21.111843+00:00'}
+2025-07-06 11:34:22,963 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 11:34:22,965 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:34:21.111843+00:00'}]
+2025-07-06 11:34:22,965 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 11:34:52,966 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:34:52.965801+00:00'}
+2025-07-06 11:34:53,547 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 11:34:53,547 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:34:52.965801+00:00'}]
+2025-07-06 11:34:53,547 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 11:35:01,756 - INFO - HTTP Request: GET https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status?select=%2A "HTTP/2 200 OK"

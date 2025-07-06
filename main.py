@@ -170,6 +170,7 @@ class WorkTracker:
         settings_menu.add_command(label="Set Default Category", command=self.open_default_category_settings)
         settings_menu.add_command(label="Set Display Name", command=self.open_display_name_settings)
         settings_menu.add_command(label="Sync Daily Stats to Cloud", command=self.sync_daily_stats_to_cloud)
+        settings_menu.add_command(label="Co-work with Friends", command=self.show_co_work_dialog) # New menu item
         self.menubar.add_command(label="Exit", command=self.exit_app)
 
         self.create_tray_icon()
@@ -193,6 +194,9 @@ class WorkTracker:
         self.root.after(200, self.update_category_dropdown)
         self.root.after(300, self.load_default_category_setting)
         self.root.after(400, self.load_display_name_setting)
+        
+        # Schedule the first heartbeat and subsequent heartbeats
+        self.root.after(5000, self._schedule_heartbeat) # Initial call after 5 seconds
 
 
     def _initialize_supabase_client(self):
@@ -368,11 +372,13 @@ class WorkTracker:
         except Exception as e:
             logging.error(f"Error exiting application: {e}")
 
-    def get_available_categories(self):
+    def get_available_categories(self, include_none=False): # Added include_none parameter
         """Gets categories from db."""
         all_categories = self.send_db_command('get_all_categories', expect_result=True)
         if all_categories is None:
             all_categories = []
+        if include_none:
+            return ["None"] + all_categories
         return all_categories
 
     def update_category_dropdown(self):
@@ -419,8 +425,8 @@ class WorkTracker:
 
         ttk.Label(form_frame, text="Select Default Category:").grid(row=0, column=0, sticky="w", pady=5)
 
-        current_categories = self.send_db_command('get_all_categories', expect_result=True)
-        category_options = ["None"] + (current_categories if current_categories else [])
+        current_categories = self.get_available_categories(include_none=True) # Use new parameter
+        category_options = current_categories
 
         self.default_category_setting_var = tk.StringVar()
         
@@ -522,6 +528,39 @@ class WorkTracker:
             dialog.destroy()
         else:
             messagebox.showerror("Error", "Failed to save display name.")
+
+    def _schedule_heartbeat(self):
+        """Sends a heartbeat to the cloud and reschedules itself."""
+        # Ensure Supabase client is ready and user_id is available before sending heartbeats
+        if self.supabase_client and self.supabase_user_id and self.display_name:
+            self.send_heartbeat_to_cloud()
+        else:
+            logging.warning("Supabase client or user ID not ready for heartbeat. Skipping this cycle.")
+        
+        # Reschedule for 30 seconds later
+        self.root.after(30000, self._schedule_heartbeat)
+
+    def send_heartbeat_to_cloud(self):
+        """Sends a heartbeat to the Supabase online_status table."""
+        if not SUPABASE_AVAILABLE or not self.supabase_client or not self.supabase_user_id or not self.display_name:
+            logging.warning("Cannot send heartbeat: Supabase not initialized or display name missing.")
+            return False
+
+        current_utc_time = datetime.datetime.now(datetime.timezone.utc)
+        heartbeat_data = {
+            'user_id': self.supabase_user_id,
+            'display_name': self.display_name,
+            'last_active_at': current_utc_time.isoformat()
+        }
+
+        logging.info(f"Sending heartbeat: {heartbeat_data}")
+        success = self._send_supabase_data('online_status', heartbeat_data)
+
+        if success:
+            logging.info("Heartbeat sent to cloud successfully.")
+        else:
+            logging.error("Failed to send heartbeat to cloud.")
+        return success
 
     def sync_daily_stats_to_cloud(self):
         """Calculates daily stats and uploads them to Supabase."""
@@ -733,6 +772,145 @@ class WorkTracker:
         except Exception as e:
             logging.error(f"Error renaming category: {e}")
             messagebox.showerror("Error", f"An error occurred while renaming category: {e}")
+
+    def show_co_work_dialog(self):
+        """Opens a dialog to show online users and invite them for co-work."""
+        co_work_dialog = tk.Toplevel(self.root)
+        co_work_dialog.title("Co-work with Friends")
+        co_work_dialog.transient(self.root)
+        co_work_dialog.grab_set()
+        co_work_dialog.geometry("400x300")
+
+        frame = ttk.Frame(co_work_dialog, padding=10)
+        frame.pack(fill="both", expand=True)
+
+        ttk.Label(frame, text="Online Friends:").pack(pady=5)
+
+        self.online_users_tree = ttk.Treeview(frame, columns=("Display Name",), show="headings")
+        self.online_users_tree.heading("Display Name", text="Display Name")
+        self.online_users_tree.column("Display Name", width=250, stretch=tk.YES)
+        self.online_users_tree.pack(fill="both", expand=True)
+
+        action_frame = ttk.Frame(frame)
+        action_frame.pack(pady=10)
+
+        refresh_button = ttk.Button(action_frame, text="Refresh", command=self._populate_online_users)
+        refresh_button.pack(side=tk.LEFT, padx=5)
+
+        invite_button = ttk.Button(action_frame, text="Invite Selected", command=self._invite_selected_user)
+        invite_button.pack(side=tk.LEFT, padx=5)
+
+        self._populate_online_users() # Initial population
+
+        co_work_dialog.wait_window()
+
+    def _populate_online_users(self):
+        """Fetches online users from Supabase and populates the Treeview."""
+        for item in self.online_users_tree.get_children():
+            self.online_users_tree.delete(item)
+
+        if not SUPABASE_AVAILABLE or not self.supabase_client:
+            logging.warning("Supabase not available for fetching online users.")
+            self.online_users_tree.insert("", "end", values=("Cloud sync not active.",))
+            return
+
+        try:
+            # Define online threshold (e.g., last 60 seconds)
+            online_threshold = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=60)
+            
+            # Fetch online status from Supabase
+            # Note: supabase-py doesn't directly support client-side filtering by timestamp in select()
+            # We'll fetch all and filter client-side for simplicity, or implement RPC for server-side filter.
+            # For small number of users, fetching all is fine.
+            response = self.supabase_client.table('online_status').select('*').execute()
+
+            if response and response.data:
+                online_users = []
+                for user_data in response.data:
+                    last_active_str = user_data.get('last_active_at')
+                    user_id = user_data.get('user_id')
+                    display_name = user_data.get('display_name')
+
+                    if last_active_str and user_id and display_name:
+                        try:
+                            # Parse last_active_at to a timezone-aware datetime object
+                            last_active_dt = date_parse(last_active_str) if DATEUTIL_AVAILABLE else datetime.datetime.fromisoformat(last_active_str.replace('Z', '+00:00'))
+                            
+                            # Ensure it's UTC for comparison
+                            if last_active_dt.tzinfo is None:
+                                last_active_dt = last_active_dt.replace(tzinfo=datetime.timezone.utc)
+
+                            # Check if active and not current user
+                            if last_active_dt >= online_threshold and user_id != self.supabase_user_id:
+                                online_users.append({'display_name': display_name, 'user_id': user_id})
+                        except Exception as e:
+                            logging.error(f"Error parsing last_active_at for user {display_name}: {e}", exc_info=True)
+                            continue # Skip this user if parsing fails
+
+                if online_users:
+                    for user in online_users:
+                        self.online_users_tree.insert("", "end", values=(user['display_name'],))
+                else:
+                    self.online_users_tree.insert("", "end", values=("No friends online right now.",))
+            else:
+                self.online_users_tree.insert("", "end", values=("Could not fetch online status.",))
+
+        except Exception as e:
+            logging.error(f"Error fetching online users from Supabase: {e}", exc_info=True)
+            self.online_users_tree.insert("", "end", values=("Error fetching online users.",))
+
+    def _invite_selected_user(self):
+        """Invites the selected user for co-work."""
+        selected_item = self.online_users_tree.focus()
+        if not selected_item:
+            messagebox.showinfo("Invite Friend", "Please select a friend from the list to invite.")
+            return
+
+        selected_display_name = self.online_users_tree.item(selected_item, 'values')[0]
+        
+        # Generate Google Meet link
+        meet_link = "https://meet.google.com/new" # Simplest way to get a new meeting link
+
+        # Construct invitation message
+        subject = f"Co-work Invitation from {self.display_name}"
+        body = (
+            f"Hey {selected_display_name},\n\n"
+            f"I'm online and down for a co-work session! Join me here: {meet_link}\n\n"
+            f"Let me know if you're free.\n\n"
+            f"Best,\n{self.display_name}"
+        )
+
+        # Offer choice for sending method
+        choice = messagebox.askyesno(
+            "Send Invitation",
+            f"Invite {selected_display_name} to co-work:\n\n"
+            f"Via Email (opens default email client)?\n"
+            f"Click 'Yes' for Email, 'No' for WhatsApp (manual paste)."
+        )
+
+        import webbrowser
+        if choice: # User chose Email
+            try:
+                # Mailto link with subject and body
+                webbrowser.open_new_tab(f'mailto:?subject={subject}&body={body.replace(" ", "%20").replace("\\n", "%0A")}')
+                messagebox.showinfo("Invitation Sent", f"Your email client has been opened with an invitation for {selected_display_name}. Please send it manually.")
+            except Exception as e:
+                logging.error(f"Failed to open email client: {e}", exc_info=True)
+                messagebox.showerror("Error", "Could not open email client. Please try manually.")
+        else: # User chose WhatsApp
+            try:
+                # Open WhatsApp Web and provide instructions to paste
+                webbrowser.open_new_tab("https://web.whatsapp.com/")
+                messagebox.showinfo(
+                    "Invitation Sent",
+                    f"WhatsApp Web has been opened. Please find {selected_display_name} and paste the following message:\n\n"
+                    f"Subject: {subject}\n\n{body}\n\n"
+                    f"(Google Meet Link: {meet_link})"
+                )
+            except Exception as e:
+                logging.error(f"Failed to open WhatsApp Web: {e}", exc_info=True)
+                messagebox.showerror("Error", "Could not open WhatsApp Web. Please try manually.")
+
 
     def update_stopwatch(self):
         """Update the stopwatch display."""
@@ -1233,13 +1411,11 @@ class WorkTracker:
 
 
             # --- Crucial Fix: Ensure comparison dates are timezone-aware (UTC) ---
+            # Get current time in UTC
             now_utc = datetime.datetime.now(datetime.timezone.utc)
 
             if view == "Weeks":
-                # Get start of week in UTC
-                # Monday is 0, Sunday is 6 for weekday(). We want to go back to Monday.
-                # Or, if we want Sunday as start of week, use now_utc.weekday()
-                # For consistency with python's weekday (Monday=0), we'll assume Monday start of week.
+                # Get start of week (Monday) in UTC
                 start_of_week_utc = now_utc - datetime.timedelta(days=now_utc.weekday())
                 start_of_week_utc = start_of_week_utc.replace(hour=0, minute=0, second=0, microsecond=0) # Ensure start of day
                 
