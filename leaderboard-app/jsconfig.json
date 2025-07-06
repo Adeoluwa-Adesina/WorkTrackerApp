@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/components/*": ["./src/components/*"],
+      "@/lib/*": ["./src/lib/*"]
+    },
+    "jsx": "react-jsx" // Ensure JSX support for React 17+
+  },
+  "include": ["src"]
+}

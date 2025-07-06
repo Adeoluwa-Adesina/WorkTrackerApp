@@ -70,3 +70,139 @@ supabase._sync.client.SupabaseException: Invalid URL
 2025-07-05 20:10:55,429 - INFO - All categories retrieved from dedicated table.
 2025-07-05 20:10:55,429 - INFO - Default category 'Coding' loaded and set.
 2025-07-05 20:10:55,429 - INFO - No custom display name set. Using default: User-08b60a08
+2025-07-05 20:31:28,553 - INFO - Tray icon created successfully.
+2025-07-05 20:31:28,554 - INFO - WorkTracker application initialized.
+2025-07-05 20:31:28,629 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-05 20:31:28,631 - INFO - Sessions table checked/created.
+2025-07-05 20:31:28,631 - INFO - Categories table checked/created.
+2025-07-05 20:31:28,631 - INFO - Settings table checked/created.
+2025-07-05 20:31:28,631 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-05 20:31:28,778 - INFO - Attempting to initialize Supabase client.
+2025-07-05 20:31:28,778 - INFO - SUPABASE_URL (from env): '”https://guwfpjfhzpxeebxknxum.supabase.co”'
+2025-07-05 20:31:28,778 - INFO - SUPABASE_KEY (from env): '”eyJh...'
+2025-07-05 20:31:28,778 - ERROR - Supabase URL format error: '”https://guwfpjfhzpxeebxknxum.supabase.co”'. Must be a string starting with 'https://'.
+2025-07-05 20:31:44,400 - INFO - All categories retrieved from dedicated table.
+2025-07-05 20:31:44,400 - INFO - All categories retrieved from dedicated table.
+2025-07-05 20:31:44,400 - INFO - Default category 'Coding' loaded and set.
+2025-07-05 20:31:44,400 - INFO - No custom display name set. Using default: User-08b60a08
+2025-07-05 20:33:42,448 - INFO - Tray icon created successfully.
+2025-07-05 20:33:42,449 - INFO - WorkTracker application initialized.
+2025-07-05 20:33:42,525 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-05 20:33:42,526 - INFO - Sessions table checked/created.
+2025-07-05 20:33:42,526 - INFO - Categories table checked/created.
+2025-07-05 20:33:42,526 - INFO - Settings table checked/created.
+2025-07-05 20:33:42,526 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-05 20:33:42,673 - INFO - Attempting to initialize Supabase client.
+2025-07-05 20:33:42,673 - INFO - SUPABASE_URL (from env): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-05 20:33:42,673 - INFO - SUPABASE_KEY (from env): 'eyJhb...'
+2025-07-05 20:33:42,747 - INFO - Supabase client created successfully.
+2025-07-05 20:33:42,747 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-05 20:33:42,747 - INFO - All categories retrieved from dedicated table.
+2025-07-05 20:33:42,823 - INFO - All categories retrieved from dedicated table.
+2025-07-05 20:33:42,823 - INFO - Default category 'Coding' loaded and set.
+2025-07-05 20:33:42,923 - INFO - No custom display name set. Using default: User-08b60a08
+2025-07-05 20:34:09,417 - INFO - Buttons state updated: Start=DISABLED, Pause=NORMAL, Stop=NORMAL
+2025-07-05 20:34:09,421 - INFO - Attempting to start session with category: Coding, task: working on work tracker right now
+2025-07-05 20:34:09,423 - INFO - Session inserted. ID: 2
+2025-07-05 20:34:09,423 - INFO - Session started successfully with category: Coding, ID: 2
+2025-07-05 20:43:56,994 - INFO - Session updated. ID: 2
+2025-07-05 20:44:00,386 - INFO - Session duration displayed: 0:09:47.570133
+2025-07-05 20:44:00,386 - INFO - Session stopped
+2025-07-05 20:44:01,899 - INFO - All categories retrieved from dedicated table.
+2025-07-05 20:44:01,900 - INFO - Sessions retrieved
+2025-07-05 20:44:10,937 - INFO - Sessions retrieved
+2025-07-05 20:44:17,018 - INFO - Sessions retrieved
+2025-07-05 20:44:21,536 - INFO - Sessions retrieved
+2025-07-05 20:44:23,670 - INFO - Sessions retrieved
+2025-07-05 20:44:53,615 - INFO - Setting 'display_name' set to 'Adeolu'.
+2025-07-05 20:44:55,501 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND start_time >= ? AND start_time <= ? ORDER BY start_time DESC, Params: ['2025-07-05 00:00:00.000000', '2025-07-05 23:59:59.999999']
+2025-07-05 20:44:57,466 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/leaderboard_stats "HTTP/2 201 Created"
+2025-07-05 20:44:57,475 - INFO - Data successfully upserted to Supabase table 'leaderboard_stats': [{'id': '004be7ed-3b7a-4b13-8b93-c536aba2c2d6', 'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-05', 'total_sessions': 2, 'longest_session_duration_minutes': 9.79, 'last_synced': '2025-07-05T20:44:55.504186+00:00'}]
+2025-07-05 20:44:59,932 - INFO - Synced daily stats for Adeolu: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-05', 'total_sessions': 2, 'longest_session_duration_minutes': 9.79, 'last_synced': '2025-07-05T20:44:55.504186'}
+2025-07-06 05:18:47,259 - INFO - Tray icon created successfully.
+2025-07-06 05:18:47,260 - INFO - WorkTracker application initialized.
+2025-07-06 05:18:47,337 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 05:18:47,338 - INFO - Sessions table checked/created.
+2025-07-06 05:18:47,338 - INFO - Categories table checked/created.
+2025-07-06 05:18:47,338 - INFO - Settings table checked/created.
+2025-07-06 05:18:47,338 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 05:18:47,487 - INFO - Attempting to initialize Supabase client.
+2025-07-06 05:18:47,487 - INFO - SUPABASE_URL (from env): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-06 05:18:47,487 - INFO - SUPABASE_KEY (from env): 'eyJhb...'
+2025-07-06 05:18:47,559 - INFO - Supabase client created successfully.
+2025-07-06 05:18:47,559 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-06 05:18:47,560 - INFO - All categories retrieved from dedicated table.
+2025-07-06 05:18:47,637 - INFO - All categories retrieved from dedicated table.
+2025-07-06 05:18:47,637 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 05:18:47,737 - INFO - Display name loaded: Adeolu
+2025-07-06 05:19:51,317 - INFO - Buttons state updated: Start=DISABLED, Pause=NORMAL, Stop=NORMAL
+2025-07-06 05:19:51,319 - INFO - Attempting to start session with category: Coding, task: still coding, working on the work tracker, trying to get the react web app for the leaderboard going
+2025-07-06 05:19:51,320 - INFO - Session inserted. ID: 3
+2025-07-06 05:19:51,320 - INFO - Session started successfully with category: Coding, ID: 3
+2025-07-06 05:20:12,436 - INFO - Session updated. ID: 3
+2025-07-06 05:20:15,031 - INFO - Session duration displayed: 0:00:21.118467
+2025-07-06 05:20:15,031 - INFO - Session stopped
+2025-07-06 05:20:18,953 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND start_time >= ? AND start_time <= ? ORDER BY start_time DESC, Params: ['2025-07-06 00:00:00.000000', '2025-07-06 23:59:59.999999']
+2025-07-06 05:20:20,789 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/leaderboard_stats "HTTP/2 409 Conflict"
+2025-07-06 05:20:20,792 - ERROR - Error sending data to Supabase table 'leaderboard_stats': {'message': 'duplicate key value violates unique constraint "leaderboard_stats_user_id_key"', 'code': '23505', 'hint': None, 'details': None}
+Traceback (most recent call last):
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/main.py", line 254, in _send_supabase_data
+    response = self.supabase_client.table(table_name).upsert(data).execute()
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(dict(json_obj))
+postgrest.exceptions.APIError: {'message': 'duplicate key value violates unique constraint "leaderboard_stats_user_id_key"', 'code': '23505', 'hint': None, 'details': None}
+2025-07-06 05:20:23,301 - ERROR - Failed to sync daily stats for Adeolu
+2025-07-06 05:42:59,400 - INFO - Tray icon created successfully.
+2025-07-06 05:42:59,401 - INFO - WorkTracker application initialized.
+2025-07-06 05:42:59,475 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 05:42:59,476 - INFO - Sessions table checked/created.
+2025-07-06 05:42:59,476 - INFO - Categories table checked/created.
+2025-07-06 05:42:59,476 - INFO - Settings table checked/created.
+2025-07-06 05:42:59,477 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 05:42:59,624 - INFO - Attempting to initialize Supabase client.
+2025-07-06 05:42:59,624 - INFO - SUPABASE_URL (from env): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-06 05:42:59,624 - INFO - SUPABASE_KEY (from env): 'eyJhb...'
+2025-07-06 05:42:59,695 - INFO - Supabase client created successfully.
+2025-07-06 05:42:59,695 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-06 05:42:59,696 - INFO - All categories retrieved from dedicated table.
+2025-07-06 05:42:59,774 - INFO - All categories retrieved from dedicated table.
+2025-07-06 05:42:59,774 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 05:42:59,874 - INFO - Display name loaded: Adeolu
+2025-07-06 05:43:47,822 - INFO - Buttons state updated: Start=DISABLED, Pause=NORMAL, Stop=NORMAL
+2025-07-06 05:43:47,823 - INFO - Attempting to start session with category: Coding, task: working on work tracker - made some changes to the Supabase database
+2025-07-06 05:43:47,825 - INFO - Session inserted. ID: 4
+2025-07-06 05:43:47,825 - INFO - Session started successfully with category: Coding, ID: 4
+2025-07-06 05:44:02,620 - INFO - Session updated. ID: 4
+2025-07-06 05:44:05,365 - INFO - Session duration displayed: 0:00:14.796943
+2025-07-06 05:44:05,366 - INFO - Session stopped
+2025-07-06 05:44:09,370 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND start_time >= ? AND start_time <= ? ORDER BY start_time DESC, Params: ['2025-07-06 00:00:00.000000', '2025-07-06 23:59:59.999999']
+2025-07-06 05:44:11,006 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/leaderboard_stats "HTTP/2 201 Created"
+2025-07-06 05:44:11,010 - INFO - Data successfully upserted to Supabase table 'leaderboard_stats': [{'id': '9363b501-8506-4955-952a-6b30d7730855', 'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_sessions': 2, 'longest_session_duration_minutes': 0.35, 'last_synced': '2025-07-06T05:44:09.372083+00:00'}]
+2025-07-06 05:44:13,615 - INFO - Synced daily stats for Adeolu: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_sessions': 2, 'longest_session_duration_minutes': 0.35, 'last_synced': '2025-07-06T05:44:09.372083'}
+2025-07-06 05:55:10,157 - INFO - Tray icon created successfully.
+2025-07-06 05:55:10,158 - INFO - WorkTracker application initialized.
+2025-07-06 05:55:10,235 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 05:55:10,236 - INFO - Sessions table checked/created.
+2025-07-06 05:55:10,236 - INFO - Categories table checked/created.
+2025-07-06 05:55:10,236 - INFO - Settings table checked/created.
+2025-07-06 05:55:10,236 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 05:55:10,384 - INFO - Attempting to initialize Supabase client.
+2025-07-06 05:55:10,384 - INFO - SUPABASE_URL (from env): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-06 05:55:10,384 - INFO - SUPABASE_KEY (from env): 'eyJhb...'
+2025-07-06 05:55:10,457 - INFO - Supabase client created successfully.
+2025-07-06 05:55:10,458 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-06 05:55:10,458 - INFO - All categories retrieved from dedicated table.
+2025-07-06 05:55:10,534 - INFO - All categories retrieved from dedicated table.
+2025-07-06 05:55:10,534 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 05:55:10,634 - INFO - Display name loaded: Adeolu
+2025-07-06 05:55:33,547 - INFO - Buttons state updated: Start=DISABLED, Pause=NORMAL, Stop=NORMAL
+2025-07-06 05:55:33,548 - INFO - Attempting to start session with category: Coding, task: working on work tracker
+2025-07-06 05:55:33,549 - INFO - Session inserted. ID: 5
+2025-07-06 05:55:33,549 - INFO - Session started successfully with category: Coding, ID: 5
+2025-07-06 05:58:19,348 - INFO - Session updated. ID: 5
+2025-07-06 05:58:21,409 - INFO - Session duration displayed: 0:02:45.798392
+2025-07-06 05:58:21,409 - INFO - Session stopped
+2025-07-06 05:58:25,165 - INFO - Filtered sessions retrieved. Query: SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1 AND start_time >= ? AND start_time <= ? ORDER BY start_time DESC, Params: ['2025-07-06 00:00:00.000000', '2025-07-06 23:59:59.999999']
+2025-07-06 05:58:25,959 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/leaderboard_stats "HTTP/2 201 Created"
+2025-07-06 05:58:25,970 - INFO - Data successfully upserted to Supabase table 'leaderboard_stats': [{'id': 'ba9590e2-55e4-4bf1-9d4c-94d3e40587c4', 'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_sessions': 3, 'longest_session_duration_minutes': 2.76, 'last_synced': '2025-07-06T05:58:25.167643+00:00'}]
+2025-07-06 05:58:28,691 - INFO - Synced daily stats for Adeolu: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'stat_date': '2025-07-06', 'total_sessions': 3, 'longest_session_duration_minutes': 2.76, 'last_synced': '2025-07-06T05:58:25.167643'}

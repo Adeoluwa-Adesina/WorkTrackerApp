@@ -17,8 +17,16 @@ try:
     from supabase import create_client, Client
     SUPABASE_AVAILABLE = True
 except ImportError:
-    logging.error("Supabase Python library not found. Cloud sync functionality will be disabled. Please install it using 'pip install supabase-py'.")
+    logging.error("Supabase Python library not found. Cloud sync functionality will be disabled. Please install it using 'pip install supabase'.")
     SUPABASE_AVAILABLE = False
+
+# Import dateutil for robust datetime parsing if available
+try:
+    from dateutil.parser import parse as date_parse
+    DATEUTIL_AVAILABLE = True
+except ImportError:
+    logging.warning("python-dateutil library not found. Datetime parsing for sync might be less robust. Install with 'pip install python-dateutil'.")
+    DATEUTIL_AVAILABLE = False
 
 
 from ttkthemes import ThemedTk
@@ -194,43 +202,31 @@ class WorkTracker:
             supabase_url = os.environ.get('SUPABASE_URL')
             supabase_key = os.environ.get('SUPABASE_KEY')
 
-            if not supabase_url or not supabase_key:
-                logging.error("SUPABASE_URL or SUPABASE_KEY environment variables not set. Cloud sync will be unavailable.")
-                messagebox.showwarning("Cloud Sync Error", "Supabase environment variables (SUPABASE_URL, SUPABASE_KEY) not set. Cloud sync features will be unavailable.")
+            logging.info(f"Attempting to initialize Supabase client.")
+            logging.info(f"SUPABASE_URL (from env): '{supabase_url}'")
+            logging.info(f"SUPABASE_KEY (from env): '{supabase_key[:5]}...'") # Log first few chars for security
+
+            if not supabase_url:
+                logging.error("SUPABASE_URL environment variable is not set or is empty. Cloud sync will be unavailable.")
+                messagebox.showwarning("Cloud Sync Error", "Supabase URL environment variable (SUPABASE_URL) not set. Cloud sync features will be unavailable.")
+                return
+            
+            if not supabase_key:
+                logging.error("SUPABASE_KEY environment variable is not set or is empty. Cloud sync will be unavailable.")
+                messagebox.showwarning("Cloud Sync Error", "Supabase Key environment variable (SUPABASE_KEY) not set. Cloud sync features will be unavailable.")
                 return
 
+            # Basic sanity check (rely on create_client for full validation)
+            if not isinstance(supabase_url, str) or not supabase_url.startswith("https://"):
+                logging.error(f"Supabase URL format error: '{supabase_url}'. Must be a string starting with 'https://'.")
+                messagebox.showwarning("Cloud Sync Error", "Invalid Supabase URL format. Please ensure SUPABASE_URL starts with 'https://'.")
+                return
+            
+            # create_client will raise SupabaseException if URL or Key is truly invalid
             self.supabase_client: Client = create_client(supabase_url, supabase_key)
+            logging.info("Supabase client created successfully.")
 
-            # Attempt to sign in anonymously
-            # First, check if a Supabase user ID is already stored locally
-            stored_user_id = self.send_db_command('get_setting', ('supabase_user_id',), expect_result=True)
-
-            if stored_user_id:
-                # Attempt to retrieve session for the stored user ID
-                # Note: supabase-py doesn't have a direct 'get_session_by_id' for anonymous.
-                # A better approach might be to store the full access_token and refresh_token
-                # and restore the session, or simply sign in anonymously every time.
-                # For simplicity, we'll just try to sign in anonymously again if no active session
-                # This will create a new anonymous user if the old one expired or session is lost.
-                # For persistent anonymous identity across app restarts without manual session restore,
-                # you might need to store refresh tokens or use persistent anonymous IDs.
-                # Here, we'll try to sign in anonymously and if successful, store the new ID.
-                # The user will then be associated with this instance's anonymous ID.
-                pass # We'll do auth below if no active session.
-
-            # Perform anonymous sign-in. This will create a new anonymous user if one doesn't exist
-            # or implicitly use an existing one if a session cookie/token is implicitly managed.
-            # Supabase-py's anonymous sign-in usually creates a new user each time if no persistent session is restored.
-            # To ensure persistent identity, we should store and reuse the refresh token.
-            # For this context, let's keep it simple: generate a consistent local 'user_id' for Supabase.
-            # A more robust client-side identity for desktop apps would involve storing Supabase refresh tokens securely.
-
-            # Alternative: Rely on the local SQLite setting for the user_id (local UUID),
-            # then just use the public Supabase key for direct inserts.
-            # This bypasses Supabase Auth in Python, relying on RLS policies that
-            # permit inserts based on the 'anon' key.
-            # This is simpler and aligns with "no user management on desktop".
-
+            # Ensure a local_unique_user_id exists for Supabase
             local_unique_user_id = self.send_db_command('get_setting', ('local_unique_user_id',), expect_result=True)
             if not local_unique_user_id:
                 local_unique_user_id = str(uuid.uuid4())
@@ -243,7 +239,7 @@ class WorkTracker:
 
         except Exception as e:
             logging.error(f"Error initializing Supabase client: {e}", exc_info=True)
-            messagebox.showwarning("Cloud Sync Error", "Failed to initialize Supabase for cloud sync. Leaderboard features will be unavailable.")
+            messagebox.showwarning("Cloud Sync Error", f"Failed to initialize Supabase for cloud sync: {e}. Leaderboard features will be unavailable.")
 
     def _send_supabase_data(self, table_name, data):
         """Sends data to Supabase using the initialized client."""
@@ -485,7 +481,8 @@ class WorkTracker:
         display_name_dialog = tk.Toplevel(self.root)
         display_name_dialog.title("Set Display Name")
         display_name_dialog.transient(self.root)
-        display_name_dialog.grab_set()
+        # Corrected line: Use display_name_dialog instead of display_dialog
+        display_name_dialog.grab_set() 
 
         form_frame = ttk.Frame(display_name_dialog, padding=10)
         form_frame.pack(padx=10, pady=10)
@@ -569,21 +566,54 @@ class WorkTracker:
         for session in today_sessions:
             # session: (id, start_time_str, end_time_str, category, notes)
             try:
-                start_dt = datetime.datetime.strptime(session[1], '%Y-%m-%d %H:%M:%S.%f')
+                # Use dateutil.parser.parse for robust parsing if available, else try multiple formats
+                if DATEUTIL_AVAILABLE:
+                    start_dt = date_parse(session[1])
+                    end_dt = date_parse(session[2]) if session[2] else None
+                else:
+                    # Fallback to trying multiple specific formats
+                    parsed_start = False
+                    for fmt in ['%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S']:
+                        try:
+                            start_dt = datetime.datetime.strptime(session[1], fmt)
+                            parsed_start = True
+                            break
+                        except ValueError:
+                            continue
+                    if not parsed_start:
+                        logging.error(f"Could not parse start_time: {session[1]}")
+                        continue # Skip this session
+
+                    parsed_end = False
+                    if session[2]:
+                        for fmt in ['%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S']:
+                            try:
+                                end_dt = datetime.datetime.strptime(session[2], fmt)
+                                parsed_end = True
+                                break
+                            except ValueError:
+                                continue
+                    else:
+                        end_dt = None # Handle ongoing sessions
+                        parsed_end = True # Mark as parsed if no end_time
+
+                    if not parsed_end:
+                        logging.error(f"Could not parse end_time: {session[2]}")
+                        continue # Skip this session
+
                 # Ensure end_time exists for duration calculation
-                if session[2]:
-                    end_dt = datetime.datetime.strptime(session[2], '%Y-%m-%d %H:%M:%S.%f')
+                if end_dt:
                     duration = (end_dt - start_dt).total_seconds() / 60 # in minutes
                     if duration > longest_session_duration_minutes:
                         longest_session_duration_minutes = duration
-            except (ValueError, TypeError) as e:
-                logging.error(f"Error parsing session times for sync: {session} - {e}")
+            except Exception as e: # Catch any other parsing or calculation errors
+                logging.error(f"Error processing session for sync (ID: {session[0]}): {e}", exc_info=True)
                 continue # Skip malformed or incomplete session
 
         daily_stats_data = {
             'user_id': self.supabase_user_id, # Use the consistent local Supabase user ID
             'display_name': self.display_name,
-            'stat_date': today.isoformat(), # YYYY-MM-DD
+            'stat_date': today.isoformat(), # Jamboree-MM-DD
             'total_sessions': total_sessions_today,
             'longest_session_duration_minutes': round(longest_session_duration_minutes, 2),
             'last_synced': datetime.datetime.now().isoformat()
