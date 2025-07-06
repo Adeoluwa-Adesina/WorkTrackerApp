@@ -66,6 +66,10 @@ class WorkTracker:
         self.supabase_user_id = None # Supabase user ID (from anonymous sign-in)
         self.display_name = None # User-set display name for leaderboard
 
+        # Define Lagos, Nigeria timezone (WAT, UTC+1)
+        self.lagos_timezone = datetime.timezone(datetime.timedelta(hours=1), 'WAT')
+
+
         # root window settings
         self.root = root
         self.root.title("Work Tracker")
@@ -481,7 +485,7 @@ class WorkTracker:
         display_name_dialog = tk.Toplevel(self.root)
         display_name_dialog.title("Set Display Name")
         display_name_dialog.transient(self.root)
-        display_name_dialog.grab_set() # Corrected from display_dialog.grab_set()
+        display_name_dialog.grab_set()
 
         form_frame = ttk.Frame(display_name_dialog, padding=10)
         form_frame.pack(padx=10, pady=10)
@@ -544,14 +548,28 @@ class WorkTracker:
             else:
                 pass # User chose to proceed with generic ID
 
-        today = datetime.date.today()
-        start_of_today = datetime.datetime(today.year, today.month, today.day, 0, 0, 0, 0)
-        end_of_today = datetime.datetime(today.year, today.month, today.day, 23, 59, 59, 999999)
+        # --- Define 'today' based on Lagos, Nigeria timezone (WAT, UTC+1) ---
+        lagos_tz = datetime.timezone(datetime.timedelta(hours=1), 'WAT')
+        now_in_lagos = datetime.datetime.now(lagos_tz)
+        today_in_lagos = now_in_lagos.date()
 
-        # Get all sessions for today
+        start_of_today_in_lagos = datetime.datetime(today_in_lagos.year, today_in_lagos.month, today_in_lagos.day, 0, 0, 0, 0, tzinfo=lagos_tz)
+        end_of_today_in_lagos = datetime.datetime(today_in_lagos.year, today_in_lagos.month, today_in_lagos.day, 23, 59, 59, 999999, tzinfo=lagos_tz)
+
+        # Convert to UTC for querying SQLite (if SQLite stores naive times, this might need adjustment)
+        # Assuming SQLite stores naive times as local times, we query based on local times.
+        # The conversion to UTC happens when saving to SQLite and sending to Supabase.
+        
+        # Get all sessions for today (based on Lagos time)
+        # Note: get_filtered_sessions expects naive datetimes if SQLite is naive, or timezone-aware if SQLite is timezone-aware.
+        # Since we're storing UTC in SQLite, we should query with UTC datetimes for consistency.
+        start_of_today_utc = start_of_today_in_lagos.astimezone(datetime.timezone.utc)
+        end_of_today_utc = end_of_today_in_lagos.astimezone(datetime.timezone.utc)
+
+
         today_sessions = self.send_db_command(
             'get_filtered_sessions',
-            (start_of_today, end_of_today, "All", None), # Filter by date, ignore category/search
+            (start_of_today_utc, end_of_today_utc, "All", None), # Filter by date, ignore category/search
             expect_result=True
         )
 
@@ -559,22 +577,30 @@ class WorkTracker:
             messagebox.showinfo("Cloud Sync", "No sessions recorded today to sync.")
             return
 
-        total_sessions_today = len(today_sessions)
+        # --- Calculate total duration for the day ---
+        total_duration_today_minutes = 0.0
         longest_session_duration_minutes = 0.0
 
         for session in today_sessions:
             # session: (id, start_time_str, end_time_str, category, notes)
             try:
-                # Use dateutil.parser.parse for robust parsing if available, else try multiple formats
+                # Parse stored UTC strings back to datetime objects
                 if DATEUTIL_AVAILABLE:
                     start_dt = date_parse(session[1])
                     end_dt = date_parse(session[2]) if session[2] else None
                 else:
                     # Fallback to trying multiple specific formats
                     parsed_start = False
-                    for fmt in ['%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S']:
+                    for fmt in ['%Y-%m-%d %H:%M:%S.%f%z', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%SZ']: # Added ISO formats
                         try:
-                            start_dt = datetime.datetime.strptime(session[1], fmt)
+                            # Handle potential timezone info in string
+                            if 'Z' in session[1] or '+' in session[1] or '-' == session[1][-3] or '-' == session[1][-6]: # Basic check for timezone info
+                                start_dt = datetime.datetime.fromisoformat(session[1])
+                            else:
+                                start_dt = datetime.datetime.strptime(session[1], fmt)
+                            # Ensure it's timezone-aware UTC if it was naive
+                            if start_dt.tzinfo is None:
+                                start_dt = start_dt.replace(tzinfo=datetime.timezone.utc)
                             parsed_start = True
                             break
                         except ValueError:
@@ -585,9 +611,14 @@ class WorkTracker:
 
                     parsed_end = False
                     if session[2]:
-                        for fmt in ['%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S']:
+                        for fmt in ['%Y-%m-%d %H:%M:%S.%f%z', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%SZ']: # Added ISO formats
                             try:
-                                end_dt = datetime.datetime.strptime(session[2], fmt)
+                                if 'Z' in session[2] or '+' in session[2] or '-' == session[2][-3] or '-' == session[2][-6]:
+                                    end_dt = datetime.datetime.fromisoformat(session[2])
+                                else:
+                                    end_dt = datetime.datetime.strptime(session[2], fmt)
+                                if end_dt.tzinfo is None:
+                                    end_dt = end_dt.replace(tzinfo=datetime.timezone.utc)
                                 parsed_end = True
                                 break
                             except ValueError:
@@ -603,6 +634,7 @@ class WorkTracker:
                 # Ensure end_time exists for duration calculation
                 if end_dt:
                     duration = (end_dt - start_dt).total_seconds() / 60 # in minutes
+                    total_duration_today_minutes += duration # Accumulate total duration
                     if duration > longest_session_duration_minutes:
                         longest_session_duration_minutes = duration
             except Exception as e: # Catch any other parsing or calculation errors
@@ -612,10 +644,10 @@ class WorkTracker:
         daily_stats_data = {
             'user_id': self.supabase_user_id, # Use the consistent local Supabase user ID
             'display_name': self.display_name,
-            'stat_date': today.isoformat(), # YYYY-MM-DD
-            'total_sessions': total_sessions_today,
+            'stat_date': today_in_lagos.isoformat(), # Use Lagos's calendar date
+            'total_duration_minutes': round(total_duration_today_minutes, 2), # New field for total duration
             'longest_session_duration_minutes': round(longest_session_duration_minutes, 2),
-            'last_synced': datetime.datetime.now(datetime.timezone.utc).isoformat() # Explicitly UTC
+            'last_synced': datetime.datetime.now(datetime.timezone.utc).isoformat() # Always sync 'last_synced' in UTC
         }
 
         # Send data to Supabase leaderboard_stats table
@@ -996,7 +1028,7 @@ class WorkTracker:
                     except ValueError:
                         continue
                 if not parsed:
-                    messagebox.showerror("Input Error", "Invalid Start Time format. Use YYYY-MM-DD HH:MM:SS or YYYY-MM-DD HH:MM:SS.ffffff")
+                    messagebox.showerror("Input Error", "Invalid Start Time format. Use Jamboree-MM-DD HH:MM:SS or Jamboree-MM-DD HH:MM:SS.ffffff")
                     return
             else:
                 messagebox.showerror("Input Error", "Start Time cannot be empty.")
@@ -1012,7 +1044,7 @@ class WorkTracker:
                     except ValueError:
                         continue
                 if not parsed:
-                    messagebox.showerror("Input Error", "Invalid End Time format. Use YYYY-MM-DD HH:MM:SS or YYYY-MM-DD HH:MM:SS.ffffff")
+                    messagebox.showerror("Input Error", "Invalid End Time format. Use Jamboree-MM-DD HH:MM:SS or Jamboree-MM-DD HH:MM:SS.ffffff")
                     return
 
             if new_start_time and new_end_time and new_start_time > new_end_time:
@@ -1391,13 +1423,19 @@ class Database:
             params = []
 
             if start_date:
+                # Ensure start_date is timezone-aware before converting to ISO for query
+                if start_date.tzinfo is None:
+                    start_date = start_date.astimezone(datetime.timezone.utc)
                 query += " AND start_time >= ?"
-                params.append(start_date.astimezone(datetime.timezone.utc).isoformat() if start_date.tzinfo is None else start_date.isoformat())
+                params.append(start_date.isoformat())
             if end_date:
+                # Ensure end_date is timezone-aware before converting to ISO for query
+                if end_date.tzinfo is None:
+                    end_date = end_date.astimezone(datetime.timezone.utc)
                 query += " AND start_time <= ?"
                 if end_date.hour == 0 and end_date.minute == 0 and end_date.second == 0:
                     end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-                params.append(end_date.astimezone(datetime.timezone.utc).isoformat() if end_date.tzinfo is None else end_date.isoformat())
+                params.append(end_date.isoformat())
 
             if category and category != "All":
                 if category == "Uncategorized":

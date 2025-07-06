@@ -57,7 +57,7 @@ export const SupabaseProvider = ({ children }) => {
 const useSupabaseLeaderboard = () => {
   const { supabase, isSupabaseReady } = useContext(SupabaseContext);
 
-  const fetchLeaderboardStats = async (dateFilter = 'today', sortBy = 'total_sessions') => {
+  const fetchLeaderboardStats = async (dateFilter = 'today', sortBy = 'total_duration_minutes') => { // Updated default sort
     if (!supabase || !isSupabaseReady) {
       console.warn("Supabase client not ready or not initialized.");
       return [];
@@ -65,29 +65,39 @@ const useSupabaseLeaderboard = () => {
 
     let queryBuilder = supabase.from('leaderboard_stats').select('*');
 
-    // Date filtering
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Start of today
-    const todayISO = today.toISOString().split('T')[0];
+    // Date filtering: Use a consistent 'today' based on a fixed timezone (e.g., WAT/UTC+1)
+    // For web app, we'll calculate 'today' based on the same logic as Python app's sync.
+    // This is crucial for consistency.
+    const getTodayInWAT = () => {
+      const now = new Date();
+      // Get UTC milliseconds
+      const utcMillis = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+      // Add 1 hour for WAT (UTC+1)
+      const watMillis = utcMillis + (1 * 60 * 60 * 1000);
+      const watDate = new Date(watMillis);
+      // Format to YYYY-MM-DD
+      return watDate.toISOString().split('T')[0];
+    };
 
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const yesterdayISO = yesterday.toISOString().split('T')[0];
+    const todayWATISO = getTodayInWAT();
+
+    const yesterdayWAT = new Date(new Date(todayWATISO).getTime() - (24 * 60 * 60 * 1000));
+    const yesterdayWATISO = yesterdayWAT.toISOString().split('T')[0];
 
     console.log(`Fetching stats for dateFilter: ${dateFilter}, sortBy: ${sortBy}`);
-    console.log(`Today ISO: ${todayISO}, Yesterday ISO: ${yesterdayISO}`);
+    console.log(`Today WAT ISO: ${todayWATISO}, Yesterday WAT ISO: ${yesterdayWATISO}`);
 
 
     if (dateFilter === 'today') {
-      queryBuilder = queryBuilder.eq('stat_date', todayISO);
+      queryBuilder = queryBuilder.eq('stat_date', todayWATISO);
     } else if (dateFilter === 'yesterday') {
-      queryBuilder = queryBuilder.eq('stat_date', yesterdayISO);
+      queryBuilder = queryBuilder.eq('stat_date', yesterdayWATISO);
     }
     // For 'all_time', no date filter is applied
 
     // Sorting
-    if (sortBy === 'totalSessions') {
-      queryBuilder = queryBuilder.order('total_sessions', { ascending: false });
+    if (sortBy === 'totalSessions') { // This now sorts by total_duration_minutes
+      queryBuilder = queryBuilder.order('total_duration_minutes', { ascending: false });
     } else if (sortBy === 'longestSession') {
       queryBuilder = queryBuilder.order('longest_session_duration_minutes', { ascending: false });
     }
@@ -155,6 +165,23 @@ const App = () => {
     return formatted.trim();
   };
 
+  // Function to format total duration specifically for display
+  const formatTotalDuration = (minutes) => {
+    if (typeof minutes !== 'number' || isNaN(minutes)) return 'N/A';
+    const totalSeconds = Math.round(minutes * 60);
+    const hours = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    
+    let formatted = '';
+    if (hours > 0) {
+      formatted += `${hours}h `;
+    }
+    formatted += `${mins}m`;
+    
+    return formatted.trim();
+  };
+
+
   if (!isSupabaseReady) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -186,10 +213,10 @@ const App = () => {
             <label htmlFor="sort-by" className="block text-sm font-medium text-gray-700 mb-1">Sort By:</label>
             <Select onValueChange={setSortBy} value={sortBy}>
               <SelectTrigger id="sort-by" className="w-[180px] rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm">
-                <SelectValue placeholder="Total Sessions" />
+                <SelectValue placeholder="Total Sessions" /> {/* This placeholder might be misleading now */}
               </SelectTrigger>
               <SelectContent className="bg-white border rounded-md shadow-lg">
-                <SelectItem value="totalSessions">Total Sessions</SelectItem>
+                <SelectItem value="totalSessions">Total Duration</SelectItem> {/* Changed text */}
                 <SelectItem value="longestSession">Longest Session</SelectItem>
               </SelectContent>
             </Select>
@@ -203,15 +230,16 @@ const App = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Sessions</th>
+                {/* Changed header to reflect new metric */}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Duration</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Longest Session</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Synced</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {leaderboardData.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No leaderboard data available for this filter. Sync your stats from the desktop app!</td>
+                  {/* Adjusted colspan as one column is removed */}
+                  <td colSpan="5" className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No leaderboard data available for this filter. Sync your stats from the desktop app!</td>
                 </tr>
               ) : (
                 leaderboardData.map((data, index) => (
@@ -219,11 +247,9 @@ const App = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{data.display_name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{data.stat_date}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{data.total_sessions}</td>
+                    {/* Display formatted total duration */}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatTotalDuration(data.total_duration_minutes)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDuration(data.longest_session_duration_minutes)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {data.last_synced ? new Date(data.last_synced).toLocaleString() : 'N/A'}
-                    </td>
                   </tr>
                 ))
               )}
