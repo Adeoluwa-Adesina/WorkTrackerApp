@@ -544,3 +544,36 @@ postgrest.exceptions.APIError: {'message': 'new row violates row-level security 
 2025-07-06 11:34:53,547 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:34:52.965801+00:00'}]
 2025-07-06 11:34:53,547 - INFO - Heartbeat sent to cloud successfully.
 2025-07-06 11:35:01,756 - INFO - HTTP Request: GET https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status?select=%2A "HTTP/2 200 OK"
+2025-07-06 11:40:47,956 - INFO - Tray icon created successfully.
+2025-07-06 11:40:47,957 - INFO - WorkTracker application initialized.
+2025-07-06 11:40:48,036 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 11:40:48,037 - INFO - Sessions table checked/created.
+2025-07-06 11:40:48,037 - INFO - Categories table checked/created.
+2025-07-06 11:40:48,037 - INFO - Settings table checked/created.
+2025-07-06 11:40:48,037 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 11:40:48,183 - INFO - Attempting to initialize Supabase client.
+2025-07-06 11:40:48,184 - INFO - SUPABASE_URL (from env): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-06 11:40:48,184 - INFO - SUPABASE_KEY (from env): 'eyJhb...'
+2025-07-06 11:40:48,253 - INFO - Supabase client created successfully.
+2025-07-06 11:40:48,254 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-06 11:40:48,254 - INFO - All categories retrieved from dedicated table.
+2025-07-06 11:40:48,334 - INFO - All categories retrieved from dedicated table.
+2025-07-06 11:40:48,334 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 11:40:48,434 - INFO - Display name loaded: Adeolu
+2025-07-06 11:40:53,034 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:40:53.033969+00:00'}
+2025-07-06 11:40:55,623 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 11:40:55,626 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:40:53.033969+00:00'}]
+2025-07-06 11:40:55,626 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 11:41:05,202 - INFO - HTTP Request: GET https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status?select=%2A "HTTP/2 200 OK"
+2025-07-06 11:41:25,626 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:41:25.626598+00:00'}
+2025-07-06 11:41:26,076 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 11:41:26,077 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:41:25.626598+00:00'}]
+2025-07-06 11:41:26,077 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 11:41:56,078 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:41:56.077900+00:00'}
+2025-07-06 11:41:56,570 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 11:41:56,571 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:41:56.0779+00:00'}]
+2025-07-06 11:41:56,571 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 11:42:26,572 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:42:26.571938+00:00'}
+2025-07-06 11:42:27,117 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 11:42:27,117 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T10:42:26.571938+00:00'}]
+2025-07-06 11:42:27,117 - INFO - Heartbeat sent to cloud successfully.

@@ -11,6 +11,7 @@ import threading
 import queue
 import json # For parsing supabase config
 import uuid # For generating anonymous user IDs if needed before Supabase auth
+import webbrowser # New import for opening web links/email clients
 
 # Import Supabase client
 try:
