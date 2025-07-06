@@ -1714,3 +1714,43 @@ httpx.ConnectError: [Errno 54] Connection reset by peer
 2025-07-06 15:27:07,812 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
 2025-07-06 15:27:07,831 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T14:27:05.282831+00:00'}]
 2025-07-06 15:27:07,831 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 16:22:16,339 - INFO - Tray icon created successfully.
+2025-07-06 16:22:16,340 - INFO - WorkTracker application initialized.
+2025-07-06 16:22:16,418 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 16:22:16,419 - INFO - Sessions table checked/created.
+2025-07-06 16:22:16,419 - INFO - Categories table checked/created.
+2025-07-06 16:22:16,419 - INFO - Settings table checked/created.
+2025-07-06 16:22:16,419 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 16:22:16,566 - ERROR - config.json not found at /Users/adeoluwa/Documents/WorkTrackerApp/config.json. Cloud sync will be unavailable.
+2025-07-06 16:22:21,026 - INFO - All categories retrieved from dedicated table.
+2025-07-06 16:22:21,026 - INFO - All categories retrieved from dedicated table.
+2025-07-06 16:22:21,026 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 16:22:21,027 - INFO - Display name loaded: Adeolu
+2025-07-06 16:22:21,415 - WARNING - Supabase client or user ID not ready for heartbeat. Skipping this cycle.
+2025-07-06 16:24:51,324 - INFO - Tray icon created successfully.
+2025-07-06 16:24:51,324 - INFO - WorkTracker application initialized.
+2025-07-06 16:24:51,409 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 16:24:51,411 - INFO - Sessions table checked/created.
+2025-07-06 16:24:51,411 - INFO - Categories table checked/created.
+2025-07-06 16:24:51,411 - INFO - Settings table checked/created.
+2025-07-06 16:24:51,411 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-06 16:24:51,558 - INFO - Supabase config loaded from: /Users/adeoluwa/Documents/WorkTrackerApp/config.json
+2025-07-06 16:24:51,558 - INFO - Attempting to initialize Supabase client.
+2025-07-06 16:24:51,558 - INFO - SUPABASE_URL (from config): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-06 16:24:51,558 - INFO - SUPABASE_KEY (from config): 'eyJhb...'
+2025-07-06 16:24:51,628 - INFO - Supabase client created successfully.
+2025-07-06 16:24:51,629 - INFO - Supabase client initialized. Using local_unique_user_id: 08b60a08-c8ce-44fe-a9f0-f6d6b394432b
+2025-07-06 16:24:51,629 - INFO - All categories retrieved from dedicated table.
+2025-07-06 16:24:51,707 - INFO - All categories retrieved from dedicated table.
+2025-07-06 16:24:51,708 - INFO - Default category 'Coding' loaded and set.
+2025-07-06 16:24:51,808 - INFO - Display name loaded: Adeolu
+2025-07-06 16:24:56,409 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T15:24:56.408034+00:00'}
+2025-07-06 16:24:56,882 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 16:24:56,887 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T15:24:56.408034+00:00'}]
+2025-07-06 16:24:56,887 - INFO - Heartbeat sent to cloud successfully.
+2025-07-06 16:25:07,094 - INFO - HTTP Request: GET https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status?select=%2A "HTTP/2 200 OK"
+2025-07-06 16:25:14,105 - INFO - HTTP Request: GET https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status?select=%2A "HTTP/2 200 OK"
+2025-07-06 16:25:26,888 - INFO - Sending heartbeat: {'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T15:25:26.888429+00:00'}
+2025-07-06 16:25:28,077 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-06 16:25:28,078 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '08b60a08-c8ce-44fe-a9f0-f6d6b394432b', 'display_name': 'Adeolu', 'last_active_at': '2025-07-06T15:25:26.888429+00:00'}]
+2025-07-06 16:25:28,078 - INFO - Heartbeat sent to cloud successfully.

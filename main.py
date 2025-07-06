@@ -13,6 +13,7 @@ import json # For parsing supabase config
 import uuid # For generating anonymous user IDs if needed before Supabase auth
 import webbrowser # New import for opening web links/email clients
 import urllib.parse # New import for URL encoding
+import sys # Import sys to get executable path
 
 # Import Supabase client
 try:
@@ -207,31 +208,59 @@ class WorkTracker:
             logging.warning("Supabase client not initialized: Library not available.")
             return
 
+        supabase_url = None
+        supabase_key = None
+        
+        # Determine base path for config.json (handles both dev and PyInstaller builds)
+        if getattr(sys, 'frozen', False): # Check if running as a PyInstaller executable
+            # If frozen, config.json is in the same directory as the executable
+            base_path = sys._MEIPASS # This is the path to the temporary folder where PyInstaller extracts files
+        else:
+            # If not frozen, running from source, config.json is in the script's directory
+            base_path = os.path.dirname(os.path.abspath(__file__))
+
+        config_path = os.path.join(base_path, 'config.json')
+
         try:
-            # Get Supabase URL and Key from environment variables
-            supabase_url = os.environ.get('SUPABASE_URL')
-            supabase_key = os.environ.get('SUPABASE_KEY')
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                supabase_url = config.get('SUPABASE_URL')
+                supabase_key = config.get('SUPABASE_KEY')
+            logging.info(f"Supabase config loaded from: {config_path}")
+        except FileNotFoundError:
+            logging.error(f"config.json not found at {config_path}. Cloud sync will be unavailable.")
+            messagebox.showwarning("Cloud Sync Error", "Supabase config.json not found. Cloud sync features will be unavailable.")
+            return
+        except json.JSONDecodeError:
+            logging.error(f"Error decoding config.json at {config_path}. Cloud sync will be unavailable.")
+            messagebox.showwarning("Cloud Sync Error", "Error reading config.json. Check its format. Cloud sync features will be unavailable.")
+            return
+        except Exception as e:
+            logging.error(f"Unexpected error loading config.json: {e}", exc_info=True)
+            messagebox.showwarning("Cloud Sync Error", "An unexpected error occurred loading config.json. Cloud sync features will be unavailable.")
+            return
 
-            logging.info(f"Attempting to initialize Supabase client.")
-            logging.info(f"SUPABASE_URL (from env): '{supabase_url}'")
-            logging.info(f"SUPABASE_KEY (from env): '{supabase_key[:5]}...'") # Log first few chars for security
+        logging.info(f"Attempting to initialize Supabase client.")
+        logging.info(f"SUPABASE_URL (from config): '{supabase_url}'")
+        logging.info(f"SUPABASE_KEY (from config): '{supabase_key[:5]}...'") # Log first few chars for security
 
-            if not supabase_url:
-                logging.error("SUPABASE_URL environment variable is not set or is empty. Cloud sync will be unavailable.")
-                messagebox.showwarning("Cloud Sync Error", "Supabase URL environment variable (SUPABASE_URL) not set. Cloud sync features will be unavailable.")
-                return
-            
-            if not supabase_key:
-                logging.error("SUPABASE_KEY environment variable is not set or is empty. Cloud sync will be unavailable.")
-                messagebox.showwarning("Cloud Sync Error", "Supabase Key environment variable (SUPABASE_KEY) not set. Cloud sync features will be unavailable.")
-                return
+        if not supabase_url:
+            logging.error("SUPABASE_URL is not set or is empty in config.json. Cloud sync will be unavailable.")
+            messagebox.showwarning("Cloud Sync Error", "Supabase URL not found in config.json. Cloud sync features will be unavailable.")
+            return
+        
+        if not supabase_key:
+            logging.error("SUPABASE_KEY is not set or is empty in config.json. Cloud sync will be unavailable.")
+            messagebox.showwarning("Cloud Sync Error", "Supabase Key not found in config.json. Cloud sync features will be unavailable.")
+            return
 
-            # Basic sanity check (rely on create_client for full validation)
-            if not isinstance(supabase_url, str) or not supabase_url.startswith("https://"):
-                logging.error(f"Supabase URL format error: '{supabase_url}'. Must be a string starting with 'https://'.")
-                messagebox.showwarning("Cloud Sync Error", "Invalid Supabase URL format. Please ensure SUPABASE_URL starts with 'https://'.")
-                return
-            
+        # Basic sanity check (rely on create_client for full validation)
+        if not isinstance(supabase_url, str) or not supabase_url.startswith("https://"):
+            logging.error(f"Supabase URL format error: '{supabase_url}'. Must be a string starting with 'https://'.")
+            messagebox.showwarning("Cloud Sync Error", "Invalid Supabase URL format. Please ensure SUPABASE_URL starts with 'https://'.")
+            return
+        
+        try:
             # create_client will raise SupabaseException if URL or Key is truly invalid
             self.supabase_client: Client = create_client(supabase_url, supabase_key)
             logging.info("Supabase client created successfully.")
@@ -862,7 +891,7 @@ class WorkTracker:
             self.online_users_tree.insert("", "end", values=("Error fetching online users.",))
 
     def _invite_selected_user(self):
-        """Invites the selected user for co-work."""
+        """Invites the selected user for co-work via email."""
         selected_item = self.online_users_tree.focus()
         if not selected_item:
             messagebox.showinfo("Invite Friend", "Please select a friend from the list to invite.")
@@ -878,14 +907,14 @@ class WorkTracker:
         body = (
             f"Hey {selected_display_name},\n\n"
             f"I'm online and down for a co-work session! Join me here: {meet_link}\n\n"
-            f"Let's get some work done!\n\n" # More direct call to action
+            f"Let's get some work done!\n\n"
             f"Best,\n{self.display_name}"
         )
 
         # Use urllib.parse.quote for robust URL encoding of the body (spaces as %20)
         # Use urllib.parse.quote_plus for the subject (spaces as + is fine for subject)
         encoded_subject = urllib.parse.quote_plus(subject)
-        encoded_body = urllib.parse.quote(body) # Changed to quote for spaces as %20
+        encoded_body = urllib.parse.quote(body) # Correctly encodes spaces as %20
 
         # Directly open email client, removing the choice dialog
         try:
