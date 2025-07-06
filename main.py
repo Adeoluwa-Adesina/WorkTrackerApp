@@ -12,6 +12,7 @@ import queue
 import json # For parsing supabase config
 import uuid # For generating anonymous user IDs if needed before Supabase auth
 import webbrowser # New import for opening web links/email clients
+import urllib.parse # New import for URL encoding
 
 # Import Supabase client
 try:
@@ -889,11 +890,15 @@ class WorkTracker:
             f"Click 'Yes' for Email, 'No' for WhatsApp (manual paste)."
         )
 
-        import webbrowser
+        # Use urllib.parse.quote for robust URL encoding of the body (spaces as %20)
+        # Use urllib.parse.quote_plus for the subject (spaces as + is fine for subject)
+        encoded_subject = urllib.parse.quote_plus(subject)
+        encoded_body = urllib.parse.quote(body) # Changed to quote for spaces as %20
+
         if choice: # User chose Email
             try:
                 # Mailto link with subject and body
-                webbrowser.open_new_tab(f'mailto:?subject={subject}&body={body.replace(" ", "%20").replace("\\n", "%0A")}')
+                webbrowser.open_new_tab(f'mailto:?subject={encoded_subject}&body={encoded_body}')
                 messagebox.showinfo("Invitation Sent", f"Your email client has been opened with an invitation for {selected_display_name}. Please send it manually.")
             except Exception as e:
                 logging.error(f"Failed to open email client: {e}", exc_info=True)
