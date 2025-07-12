@@ -93,7 +93,7 @@ const useSupabaseLeaderboard = () => {
     } else if (dateFilter === 'yesterday') {
       queryBuilder = queryBuilder.eq('stat_date', yesterdayWATISO);
     }
-    // For 'all_time', no date filter is applied
+    // For 'all_time', no date filter is applied, we fetch all records
 
     // Sorting
     if (sortBy === 'totalSessions') { // This now sorts by total_duration_minutes
@@ -131,8 +131,6 @@ const useSupabaseLeaderboard = () => {
       const onlineThreshold = new Date(new Date().getTime() - (60 * 1000)).toISOString(); // 60 seconds ago in ISO UTC
       
       // Fetch users active within the last 60 seconds
-      // Note: Supabase's client-side filtering by timestamp might require a custom RPC for robust server-side filtering
-      // For simplicity, we'll fetch all and filter client-side.
       const { data, error } = await supabase.from('online_status').select('*');
 
       if (error) {
@@ -157,6 +155,27 @@ const useSupabaseLeaderboard = () => {
   return { fetchLeaderboardStats, fetchOnlineStatus };
 };
 
+// --- Helper function to aggregate user data ---
+const aggregateData = (data) => {
+    const userStats = new Map();
+
+    data.forEach(stat => {
+        if (userStats.has(stat.user_id)) {
+            const existingStat = userStats.get(stat.user_id);
+            existingStat.total_duration_minutes += stat.total_duration_minutes;
+            existingStat.longest_session_duration_minutes = Math.max(
+                existingStat.longest_session_duration_minutes,
+                stat.longest_session_duration_minutes
+            );
+        } else {
+            // Create a copy of the stat object to avoid mutation issues
+            userStats.set(stat.user_id, { ...stat });
+        }
+    });
+
+    return Array.from(userStats.values());
+};
+
 
 // --- Leaderboard App Component ---
 const App = () => {
@@ -173,9 +192,29 @@ const App = () => {
     if (isSupabaseReady) {
       const loadData = async () => {
         console.log("Loading leaderboard data...");
-        const data = await fetchLeaderboardStats(dateFilter, sortBy);
-        setLeaderboardData(data);
-        console.log("Leaderboard data set:", data);
+        // Fetch raw data without client-side sorting first
+        const rawData = await fetchLeaderboardStats(dateFilter, sortBy);
+
+        let processedData = rawData;
+
+        // Aggregate data if the filter is 'all_time'
+        if (dateFilter === 'all_time') {
+          processedData = aggregateData(rawData);
+        }
+
+        // Sort the processed data (either raw or aggregated)
+        processedData.sort((a, b) => {
+            if (sortBy === 'totalSessions') {
+                return b.total_duration_minutes - a.total_duration_minutes;
+            } else if (sortBy === 'longestSession') {
+                return b.longest_session_duration_minutes - a.longest_session_duration_minutes;
+            }
+            // Fallback sort by display name
+            return a.display_name.localeCompare(b.display_name);
+        });
+        
+        setLeaderboardData(processedData);
+        console.log("Leaderboard data set:", processedData);
       };
       loadData();
     }
@@ -281,7 +320,9 @@ const App = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                {dateFilter !== 'all_time' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Duration</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Longest Session</th>
               </tr>
@@ -289,12 +330,11 @@ const App = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {leaderboardData.length === 0 ? (
                 <tr>
-                  {/* Adjusted colspan as one column is removed */}
-                  <td colSpan="5" className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No leaderboard data available for this filter. Sync your stats from the desktop app!</td>
+                  <td colSpan={dateFilter !== 'all_time' ? 5 : 4} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No leaderboard data available for this filter. Sync your stats from the desktop app!</td>
                 </tr>
               ) : (
                 leaderboardData.map((data, index) => (
-                  <tr key={data.id}>
+                  <tr key={dateFilter === 'all_time' ? data.user_id : data.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 flex items-center">
                       {data.display_name}
@@ -302,7 +342,9 @@ const App = () => {
                         <span className="ml-2 h-2 w-2 bg-green-500 rounded-full animate-pulse" title="Online"></span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{data.stat_date}</td>
+                    {dateFilter !== 'all_time' && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{data.stat_date}</td>
+                    )}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatTotalDuration(data.total_duration_minutes)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDuration(data.longest_session_duration_minutes)}</td>
                   </tr>
