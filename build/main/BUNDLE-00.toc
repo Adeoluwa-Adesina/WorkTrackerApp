@@ -1,3 +1,0 @@
-([('main',
-   '/Users/adeoluwa/Documents/WorkTrackerApp/dist/main',
-   'EXECUTABLE')],)
