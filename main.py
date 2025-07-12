@@ -15,6 +15,17 @@ import webbrowser # New import for opening web links/email clients
 import urllib.parse # New import for URL encoding
 import sys
 
+# --- ttkbootstrap Import ---
+try:
+    import ttkbootstrap as ttk
+    from ttkbootstrap.constants import *
+except ImportError:
+    print("ttkbootstrap not found. Please install it using 'pip install ttkbootstrap'")
+    # Fallback to standard tkinter if ttkbootstrap is not available
+    import tkinter as tk
+    from tkinter import ttk, messagebox, simpledialog, filedialog
+
+
 # --- Battery Optimization: Logging Config ---
 logging.basicConfig(
     filename='work_tracker.log',
@@ -40,9 +51,8 @@ except ImportError:
     DATEUTIL_AVAILABLE = False
 
 
-from ttkthemes import ThemedTk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from tkinter import ttk, messagebox, simpledialog, filedialog
+
 
 # Configure logging
 logging.basicConfig(filename='app.log', level=logging.INFO,
@@ -84,14 +94,7 @@ class WorkTracker:
         # root window settings
         self.root = root
         self.root.title("Work Tracker")
-        self.root.geometry("500x400")
-
-        # Themes and Styling
-        style = ttk.Style(root)
-        style.configure("TButton", padding=6, font=("Arial", 11))
-        style.configure("TLabel", padding=5, font=("Arial", 11))
-        style.configure("TCombobox", padding=5, font=("Arial", 11))
-        style.configure("TFrame", background="#f0f0f0")
+        self.root.geometry("600x550")
 
         self.start_time = None
         self.is_running = False
@@ -104,84 +107,77 @@ class WorkTracker:
         self.tray_icon = None
         self.base_tray_image = None
         self.last_tray_update_time = datetime.datetime.now()
+        
+        # --- Main Frame ---
+        main_frame = ttk.Frame(root, padding="20")
+        main_frame.pack(expand=True, fill=BOTH)
 
-        top_frame = ttk.Frame(root, padding=10, style="TFrame")
-        top_frame.pack(fill="x")
-        ttk.Label(top_frame, text='Category:').grid(
-            row=0, column=0, padx=5, pady=5)
+        # --- Stopwatch Display ---
+        self.stopwatch_label = ttk.Label(main_frame, text="00:00:00", font=("Helvetica", 48, "bold"), bootstyle="primary")
+        self.stopwatch_label.pack(pady=20)
+
+        # --- Category Management ---
+        category_frame = ttk.Labelframe(main_frame, text="Category Management", padding=15)
+        category_frame.pack(fill=X, pady=10)
+        
+        self.category_var = tk.StringVar(root)
+        self.category_dropdown = ttk.Combobox(category_frame, textvariable=self.category_var, bootstyle="info")
+        self.category_dropdown.pack(side=LEFT, expand=True, fill=X, padx=(0, 10))
+        self.category_dropdown.bind("<<ComboboxSelected>>", self.on_category_select)
+
+        self.add_category_button = ttk.Button(category_frame, text="Add", command=self.add_category, bootstyle="success-outline")
+        self.add_category_button.pack(side=LEFT, padx=5)
+        self.rename_category_button = ttk.Button(category_frame, text="Rename", command=self.rename_category, bootstyle="warning-outline")
+        self.rename_category_button.pack(side=LEFT, padx=5)
+        self.delete_category_button = ttk.Button(category_frame, text="Delete", command=self.delete_category, bootstyle="danger-outline")
+        self.delete_category_button.pack(side=LEFT, padx=5)
+
 
         self.end_time = None
         self.current_session_id = None
         self.history_window = None
         self.statistics_window = None
 
-        # Stopwatch
-        self.stopwatch_label = ttk.Label(
-            root, text="00:00:00", font=("Arial", 14))
-        self.stopwatch_label.pack(pady=5)
-
-        # Categories
-        self.category_var = tk.StringVar(root)
-        self.category_dropdown = ttk.Combobox(
-            top_frame, textvariable=self.category_var)
-        self.category_dropdown.grid(row=0, column=1, padx=5, pady=5)
-        self.category_dropdown.bind("<<ComboboxSelected>>", self.on_category_select)
-
-        self.add_category_button = ttk.Button(
-            top_frame, text="Add Category", command=self.add_category)
-        self.add_category_button.grid(row=0, column=2, padx=5, pady=5)
-        self.delete_category_button = ttk.Button(
-            top_frame, text="Delete Category", command=self.delete_category)
-        self.delete_category_button.grid(row=0, column=3, padx=5, pady=5)
-        self.rename_category_button = ttk.Button(
-            top_frame, text="Rename Category", command=self.rename_category)
-        self.rename_category_button.grid(row=0, column=4, padx=5, pady=5)
 
         # Initialize local DB, then categories and Supabase
         self.root.after(100, self.initial_setup)
 
-        # Tasks
-        self.task_label = ttk.Label(root, text="Task: ")
-        self.task_label.pack()
-        self.task_text = tk.Text(root, height=2, width=50)
-        self.task_text.pack(padx=10, pady=10)
+        # --- Task Entry ---
+        task_frame = ttk.Labelframe(main_frame, text="Current Task", padding=15)
+        task_frame.pack(fill=BOTH, expand=True, pady=10)
+        self.task_text = tk.Text(task_frame, height=4, width=50, relief="flat", bg=self.root.style.colors.inputbg, fg=self.root.style.colors.fg, insertbackground=self.root.style.colors.fg)
+        self.task_text.pack(expand=True, fill=BOTH)
 
-        button_frame = ttk.Frame(root)
-        button_frame.pack(pady=10)
+        # --- Control Buttons ---
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(pady=20)
 
-        # Start, Pause/Resume, and Stop Buttons
-        self.start_button = ttk.Button(
-            button_frame, text="Start", command=self.start_session)
-        self.start_button.grid(row=0, column=0, padx=5, pady=5)
+        self.start_button = ttk.Button(button_frame, text="Start", command=self.start_session, bootstyle="success", width=10)
+        self.start_button.pack(side=LEFT, padx=10)
 
-        self.pause_button = ttk.Button(
-            button_frame, text="Pause", command=self.toggle_pause_resume, state=tk.DISABLED)
-        self.pause_button.grid(row=0, column=1, padx=5, pady=5)
+        self.pause_button = ttk.Button(button_frame, text="Pause", command=self.toggle_pause_resume, state=tk.DISABLED, bootstyle="warning", width=10)
+        self.pause_button.pack(side=LEFT, padx=10)
 
-        self.stop_button = ttk.Button(
-            button_frame, text="Stop", command=self.stop_session, state=tk.DISABLED)
-        self.stop_button.grid(row=0, column=2, padx=5, pady=5)
+        self.stop_button = ttk.Button(button_frame, text="Stop", command=self.stop_session, state=tk.DISABLED, bootstyle="danger", width=10)
+        self.stop_button.pack(side=LEFT, padx=10)
 
-        # History
-        self.history_button = ttk.Button(
-            button_frame, text="History", command=self.show_history)
-        self.history_button.grid(row=0, column=3, padx=5, pady=5)
-
-        # Statistics button
-        self.statistics_button = ttk.Button(
-            root, text="Statistics", command=self.show_statistics)
-        self.statistics_button.pack(pady=5)
-
-        # Menubar for settings
-        self.menubar = tk.Menu(root)
+        # --- Menubar for settings ---
+        self.menubar = ttk.Menu(root)
         self.root.config(menu=self.menubar)
 
-        settings_menu = tk.Menu(self.menubar, tearoff=0)
+        settings_menu = ttk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Settings", menu=settings_menu)
         settings_menu.add_command(label="Set Default Category", command=self.open_default_category_settings)
         settings_menu.add_command(label="Set Display Name", command=self.open_display_name_settings)
+        settings_menu.add_separator()
         settings_menu.add_command(label="Sync Daily Stats to Cloud", command=self.sync_daily_stats_to_cloud)
-        settings_menu.add_command(label="Co-work with Friends", command=self.show_co_work_dialog) # New menu item
+        
+        tools_menu = ttk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu.add_command(label="View History", command=self.show_history)
+        tools_menu.add_command(label="View Statistics", command=self.show_statistics)
+        tools_menu.add_command(label="Co-work with Friends", command=self.show_co_work_dialog)
+
         self.menubar.add_command(label="Exit", command=self.exit_app)
 
         self.create_tray_icon()
@@ -237,15 +233,15 @@ class WorkTracker:
             logging.info(f"Supabase config loaded from: {config_path}")
         except FileNotFoundError:
             logging.error(f"config.json not found at {config_path}. Cloud sync will be unavailable.")
-            messagebox.showwarning("Cloud Sync Error", "Supabase config.json not found. Cloud sync features will be unavailable.")
+            ttk.dialogs.Messagebox.show_warning("Supabase config.json not found. Cloud sync features will be unavailable.", "Cloud Sync Error")
             return
         except json.JSONDecodeError:
             logging.error(f"Error decoding config.json at {config_path}. Cloud sync will be unavailable.")
-            messagebox.showwarning("Cloud Sync Error", "Error reading config.json. Check its format. Cloud sync features will be unavailable.")
+            ttk.dialogs.Messagebox.show_warning("Error reading config.json. Check its format. Cloud sync features will be unavailable.", "Cloud Sync Error")
             return
         except Exception as e:
             logging.error(f"Unexpected error loading config.json: {e}", exc_info=True)
-            messagebox.showwarning("Cloud Sync Error", "An unexpected error occurred loading config.json. Cloud sync features will be unavailable.")
+            ttk.dialogs.Messagebox.show_warning("An unexpected error occurred loading config.json. Cloud sync features will be unavailable.", "Cloud Sync Error")
             return
 
         logging.info(f"Attempting to initialize Supabase client.")
@@ -254,18 +250,18 @@ class WorkTracker:
 
         if not supabase_url:
             logging.error("SUPABASE_URL is not set or is empty in config.json. Cloud sync will be unavailable.")
-            messagebox.showwarning("Cloud Sync Error", "Supabase URL not found in config.json. Cloud sync features will be unavailable.")
+            ttk.dialogs.Messagebox.show_warning("Supabase URL not found in config.json. Cloud sync features will be unavailable.", "Cloud Sync Error")
             return
         
         if not supabase_key:
             logging.error("SUPABASE_KEY is not set or is empty in config.json. Cloud sync will be unavailable.")
-            messagebox.showwarning("Cloud Sync Error", "Supabase Key not found in config.json. Cloud sync features will be unavailable.")
+            ttk.dialogs.Messagebox.show_warning("Supabase Key not found in config.json. Cloud sync features will be unavailable.", "Cloud Sync Error")
             return
 
         # Basic sanity check (rely on create_client for full validation)
         if not isinstance(supabase_url, str) or not supabase_url.startswith("https://"):
             logging.error(f"Supabase URL format error: '{supabase_url}'. Must be a string starting with 'https://'.")
-            messagebox.showwarning("Cloud Sync Error", "Invalid Supabase URL format. Please ensure SUPABASE_URL starts with 'https://'.")
+            ttk.dialogs.Messagebox.show_warning("Invalid Supabase URL format. Please ensure SUPABASE_URL starts with 'https://'.", "Cloud Sync Error")
             return
         
         try:
@@ -286,7 +282,7 @@ class WorkTracker:
 
         except Exception as e:
             logging.error(f"Error initializing Supabase client: {e}", exc_info=True)
-            messagebox.showwarning("Cloud Sync Error", f"Failed to initialize Supabase for cloud sync: {e}. Leaderboard features will be unavailable.")
+            ttk.dialogs.Messagebox.show_warning(f"Failed to initialize Supabase for cloud sync: {e}. Leaderboard features will be unavailable.", "Cloud Sync Error")
 
     def _send_supabase_data(self, table_name, data):
         """Sends data to Supabase using the initialized client."""
@@ -359,7 +355,7 @@ class WorkTracker:
 
         if not PIL_AVAILABLE:
             logging.warning("Tray icon creation skipped: Pillow not available.")
-            messagebox.showwarning("Tray Icon Error", "Failed to create system tray icon. The 'Pillow' library is not installed. Please install it using 'pip install Pillow' for full functionality.")
+            ttk.dialogs.Messagebox.show_warning("Failed to create system tray icon. The 'Pillow' library is not installed. Please install it using 'pip install Pillow' for full functionality.", "Tray Icon Error")
             return
 
         try:
@@ -381,7 +377,7 @@ class WorkTracker:
         except Exception as e:
             logging.error(f"Failed to create tray icon: {e}. Ensure Pillow is correctly installed.", exc_info=True)
             self.tray_icon = None
-            messagebox.showwarning("Tray Icon Error", "Failed to create system tray icon. An unexpected error occurred. Please ensure 'Pillow' library is correctly installed (pip install Pillow).")
+            ttk.dialogs.Messagebox.show_warning("Failed to create system tray icon. An unexpected error occurred. Please ensure 'Pillow' library is correctly installed (pip install Pillow).", "Tray Icon Error")
 
     def show_window(self, icon=None, item=None):
         """Shows the main window."""
@@ -454,13 +450,12 @@ class WorkTracker:
 
     def open_default_category_settings(self):
         """Opens a dialog to set the default category."""
-        settings_dialog = tk.Toplevel(self.root)
-        settings_dialog.title("Set Default Category")
+        settings_dialog = ttk.Toplevel(title="Set Default Category")
         settings_dialog.transient(self.root)
         settings_dialog.grab_set()
 
-        form_frame = ttk.Frame(settings_dialog, padding=10)
-        form_frame.pack(padx=10, pady=10)
+        form_frame = ttk.Frame(settings_dialog, padding=20)
+        form_frame.pack(expand=True, fill=BOTH)
 
         ttk.Label(form_frame, text="Select Default Category:").grid(row=0, column=0, sticky="w", pady=5)
 
@@ -480,14 +475,14 @@ class WorkTracker:
         )
         default_category_dropdown.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
 
-        button_frame = ttk.Frame(settings_dialog, padding=5)
-        button_frame.pack(pady=10)
+        button_frame = ttk.Frame(form_frame)
+        button_frame.grid(row=1, column=0, columnspan=2, pady=20)
 
         save_button = ttk.Button(button_frame, text="Save",
-                                 command=lambda: self.save_default_category_setting(settings_dialog))
+                                 command=lambda: self.save_default_category_setting(settings_dialog), bootstyle="success")
         save_button.pack(side=tk.LEFT, padx=5)
 
-        cancel_button = ttk.Button(button_frame, text="Cancel", command=settings_dialog.destroy)
+        cancel_button = ttk.Button(button_frame, text="Cancel", command=settings_dialog.destroy, bootstyle="secondary")
         cancel_button.pack(side=tk.RIGHT, padx=5)
 
         settings_dialog.wait_window()
@@ -500,11 +495,11 @@ class WorkTracker:
 
         success = self.send_db_command('set_setting', ('default_category', value_to_save), expect_result=True)
         if success:
-            messagebox.showinfo("Settings Saved", "Default category setting updated.")
+            ttk.dialogs.Messagebox.show_info("Default category setting updated.", "Settings Saved")
             self.load_default_category_setting()
             dialog.destroy()
         else:
-            messagebox.showerror("Error", "Failed to save default category setting.")
+            ttk.dialogs.Messagebox.show_error("Failed to save default category setting.", "Error")
 
     def load_display_name_setting(self):
         """Loads the display name from settings and initializes Supabase user ID if not set."""
@@ -527,13 +522,12 @@ class WorkTracker:
 
     def open_display_name_settings(self):
         """Opens a dialog to set the user's display name."""
-        display_name_dialog = tk.Toplevel(self.root)
-        display_name_dialog.title("Set Display Name")
+        display_name_dialog = ttk.Toplevel(title="Set Display Name")
         display_name_dialog.transient(self.root)
         display_name_dialog.grab_set()
 
-        form_frame = ttk.Frame(display_name_dialog, padding=10)
-        form_frame.pack(padx=10, pady=10)
+        form_frame = ttk.Frame(display_name_dialog, padding=20)
+        form_frame.pack(expand=True, fill=BOTH)
 
         ttk.Label(form_frame, text="Your Display Name for Leaderboard:").grid(row=0, column=0, sticky="w", pady=5)
         # Pre-fill with current display name, but clear default if it's the auto-generated one
@@ -541,14 +535,14 @@ class WorkTracker:
         display_name_entry = ttk.Entry(form_frame, textvariable=self.display_name_var, width=30)
         display_name_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
 
-        button_frame = ttk.Frame(display_name_dialog, padding=5)
-        button_frame.pack(pady=10)
+        button_frame = ttk.Frame(form_frame)
+        button_frame.grid(row=1, column=0, columnspan=2, pady=20)
 
         save_button = ttk.Button(button_frame, text="Save",
-                                 command=lambda: self.save_display_name_setting(display_name_dialog))
+                                 command=lambda: self.save_display_name_setting(display_name_dialog), bootstyle="success")
         save_button.pack(side=tk.LEFT, padx=5)
 
-        cancel_button = ttk.Button(button_frame, text="Cancel", command=display_name_dialog.destroy)
+        cancel_button = ttk.Button(button_frame, text="Cancel", command=display_name_dialog.destroy, bootstyle="secondary")
         cancel_button.pack(side=tk.RIGHT, padx=5)
 
         display_name_dialog.wait_window()
@@ -557,16 +551,16 @@ class WorkTracker:
         """Saves the user's display name to the database."""
         new_display_name = self.display_name_var.get().strip()
         if not new_display_name:
-            messagebox.showwarning("Input Error", "Display name cannot be empty.")
+            ttk.dialogs.Messagebox.show_warning("Display name cannot be empty.", "Input Error")
             return
 
         success = self.send_db_command('set_setting', ('display_name', new_display_name), expect_result=True)
         if success:
             self.display_name = new_display_name
-            messagebox.showinfo("Settings Saved", "Display name updated.")
+            ttk.dialogs.Messagebox.show_info("Display name updated.", "Settings Saved")
             dialog.destroy()
         else:
-            messagebox.showerror("Error", "Failed to save display name.")
+            ttk.dialogs.Messagebox.show_error("Failed to save display name.", "Error")
 
     def _schedule_heartbeat(self):
         """Sends a heartbeat to the cloud and reschedules itself."""
@@ -604,19 +598,19 @@ class WorkTracker:
     def sync_daily_stats_to_cloud(self):
         """Calculates daily stats and uploads them to Supabase."""
         if not SUPABASE_AVAILABLE:
-            messagebox.showwarning("Cloud Sync", "Supabase library not available. Cannot sync stats.")
+            ttk.dialogs.Messagebox.show_warning("Supabase library not available. Cannot sync stats.", "Cloud Sync")
             return
         if not self.supabase_client:
-            messagebox.showwarning("Cloud Sync", "Supabase client not initialized. Check logs for API key errors.")
+            ttk.dialogs.Messagebox.show_warning("Supabase client not initialized. Check logs for API key errors.", "Cloud Sync")
             return
         if not self.supabase_user_id:
-             messagebox.showwarning("Cloud Sync", "Local user ID for Supabase not generated. Try restarting the app or check logs.")
+             ttk.dialogs.Messagebox.show_warning("Local user ID for Supabase not generated. Try restarting the app or check logs.", "Cloud Sync")
              return
 
         # Prompt for display name if it's still the default UUID-based one
         if not self.display_name or self.display_name.startswith("User-"):
-            response = messagebox.askyesno("Display Name Recommended", "You don't have a custom display name set. Your stats will be uploaded as a generic user ID. It is highly recommended to set a custom display name for the leaderboard. Do you want to set one now?")
-            if response:
+            response = ttk.dialogs.Messagebox.show_question("You don't have a custom display name set. Your stats will be uploaded as a generic user ID. It is highly recommended to set a custom display name for the leaderboard. Do you want to set one now?", "Display Name Recommended", buttons=["Yes", "No"])
+            if response == "Yes":
                 self.open_display_name_settings()
                 # If name was successfully set and is no longer default, proceed with sync
                 if self.display_name and not self.display_name.startswith("User-"):
@@ -652,7 +646,7 @@ class WorkTracker:
         )
 
         if not today_sessions:
-            messagebox.showinfo("Cloud Sync", "No sessions recorded today to sync.")
+            ttk.dialogs.Messagebox.show_info("No sessions recorded today to sync.", "Cloud Sync")
             return
 
         # --- Calculate total duration for the day ---
@@ -732,10 +726,10 @@ class WorkTracker:
         success = self._send_supabase_data('leaderboard_stats', daily_stats_data)
 
         if success:
-            messagebox.showinfo("Cloud Sync", "Daily statistics synced to cloud successfully!")
+            ttk.dialogs.Messagebox.show_info("Daily statistics synced to cloud successfully!", "Cloud Sync")
             logging.info(f"Synced daily stats for {self.display_name}: {daily_stats_data}")
         else:
-            messagebox.showerror("Cloud Sync Error", "Failed to sync daily statistics to cloud. Check app.log.")
+            ttk.dialogs.Messagebox.show_error("Failed to sync daily statistics to cloud. Check app.log.", "Cloud Sync Error")
             logging.error(f"Failed to sync daily stats for {self.display_name}")
 
 
@@ -747,57 +741,55 @@ class WorkTracker:
     def add_category(self):
         """Adds a new category"""
         try:
-            new_category = simpledialog.askstring(
-                "Add Category", "Enter new category name:")
+            new_category = ttk.dialogs.dialogs.askstring("Add Category", "Enter new category name:")
             if new_category and new_category.strip():
                 new_category = new_category.strip()
                 success = self.send_db_command('insert_category', (new_category,), expect_result=True)
                 if success:
                     self.update_category_dropdown()
                     self.category_var.set(new_category)
-                    messagebox.showinfo("Success", f"Category '{new_category}' added.")
+                    ttk.dialogs.Messagebox.show_info(f"Category '{new_category}' added.", "Success")
                 else:
-                    messagebox.showerror("Error", f"Failed to add category '{new_category}'. It might already exist.")
+                    ttk.dialogs.Messagebox.show_error(f"Failed to add category '{new_category}'. It might already exist.", "Error")
         except Exception as e:
             logging.error(f"Error adding category: {e}")
-            messagebox.showerror("Error", f"An error occurred while adding category: {e}")
+            ttk.dialogs.Messagebox.show_error(f"An error occurred while adding category: {e}", "Error")
 
     def delete_category(self):
         """Deletes the currently selected category from the database."""
         try:
             selected_category = self.category_var.get()
             if not selected_category or selected_category == "No Categories":
-                messagebox.showinfo("Info", "No category selected to delete.")
+                ttk.dialogs.Messagebox.show_info("No category selected to delete.", "Info")
                 return
 
-            if messagebox.askyesno("Confirm Delete", f"Are you sure you want to permanently delete category '{selected_category}'?\n\nAll existing sessions with this category will be set to 'Uncategorized'."):
+            response = ttk.dialogs.Messagebox.show_question(f"Are you sure you want to permanently delete category '{selected_category}'?\n\nAll existing sessions with this category will be set to 'Uncategorized'.", "Confirm Delete", buttons=["Yes", "No"])
+            if response == "Yes":
                 success = self.send_db_command('delete_category_from_db', (selected_category,), expect_result=True)
                 if success:
                     self.update_category_dropdown()
-                    messagebox.showinfo("Category Deleted", f"Category '{selected_category}' and its associated sessions updated to 'Uncategorized'.")
+                    ttk.dialogs.Messagebox.show_info(f"Category '{selected_category}' and its associated sessions updated to 'Uncategorized'.", "Category Deleted")
                     self.load_default_category_setting()
                 else:
-                    messagebox.showerror("Error", f"Failed to delete category '{selected_category}'.")
+                    ttk.dialogs.Messagebox.show_error(f"Failed to delete category '{selected_category}'.", "Error")
         except Exception as e:
             logging.error(f"Error deleting category: {e}")
-            messagebox.showerror("Error", f"An error occurred while deleting category: {e}")
+            ttk.dialogs.Messagebox.show_error(f"An error occurred while deleting category: {e}", "Error")
 
     def rename_category(self):
         """Renames the currently selected category in the database."""
         try:
             old_category = self.category_var.get()
             if not old_category or old_category == "No Categories":
-                messagebox.showinfo("Rename Category", "Please select a category to rename.")
+                ttk.dialogs.Messagebox.show_info("Please select a category to rename.", "Rename Category")
                 return
 
-            new_category = simpledialog.askstring(
-                "Rename Category", f"Enter new name for '{old_category}':")
+            new_category = ttk.dialogs.dialogs.askstring("Rename Category", f"Enter new name for '{old_category}':")
 
             if new_category and new_category.strip():
                 new_category = new_category.strip()
                 if old_category == new_category:
-                    messagebox.showinfo(
-                        "Rename Category", "Old and new category names are the same. No change made.")
+                    ttk.dialogs.Messagebox.show_info("Old and new category names are the same. No change made.", "Rename Category")
                     return
 
                 success = self.send_db_command('rename_category', (old_category, new_category), expect_result=True)
@@ -805,17 +797,16 @@ class WorkTracker:
                     self.update_category_dropdown()
                     self.category_var.set(new_category)
                     self.load_default_category_setting()
-                    messagebox.showinfo("Rename Category", f"Category '{old_category}' renamed to '{new_category}'.")
+                    ttk.dialogs.Messagebox.show_info(f"Category '{old_category}' renamed to '{new_category}'.", "Rename Category")
                 else:
-                    messagebox.showerror("Error", f"Failed to rename category '{old_category}'. New name might already exist.")
+                    ttk.dialogs.Messagebox.show_error(f"Failed to rename category '{old_category}'. New name might already exist.", "Error")
         except Exception as e:
             logging.error(f"Error renaming category: {e}")
-            messagebox.showerror("Error", f"An error occurred while renaming category: {e}")
+            ttk.dialogs.Messagebox.show_error(f"An error occurred while renaming category: {e}", "Error")
 
     def show_co_work_dialog(self):
         """Opens a dialog to show online users and invite them for co-work."""
-        co_work_dialog = tk.Toplevel(self.root)
-        co_work_dialog.title("Co-work with Friends")
+        co_work_dialog = ttk.Toplevel(title="Co-work with Friends")
         co_work_dialog.transient(self.root)
         co_work_dialog.grab_set()
         co_work_dialog.geometry("400x300")
@@ -825,7 +816,7 @@ class WorkTracker:
 
         ttk.Label(frame, text="Online Friends:").pack(pady=5)
 
-        self.online_users_tree = ttk.Treeview(frame, columns=("Display Name",), show="headings")
+        self.online_users_tree = ttk.Treeview(frame, columns=("Display Name",), show="headings", bootstyle="primary")
         self.online_users_tree.heading("Display Name", text="Display Name")
         self.online_users_tree.column("Display Name", width=250, stretch=tk.YES)
         self.online_users_tree.pack(fill="both", expand=True)
@@ -833,10 +824,10 @@ class WorkTracker:
         action_frame = ttk.Frame(frame)
         action_frame.pack(pady=10)
 
-        refresh_button = ttk.Button(action_frame, text="Refresh", command=self._populate_online_users)
+        refresh_button = ttk.Button(action_frame, text="Refresh", command=self._populate_online_users, bootstyle="info-outline")
         refresh_button.pack(side=tk.LEFT, padx=5)
 
-        invite_button = ttk.Button(action_frame, text="Invite Selected", command=self._invite_selected_user)
+        invite_button = ttk.Button(action_frame, text="Invite Selected", command=self._invite_selected_user, bootstyle="success-outline")
         invite_button.pack(side=tk.LEFT, padx=5)
 
         self._populate_online_users() # Initial population
@@ -902,7 +893,7 @@ class WorkTracker:
         """Invites the selected user for co-work via email."""
         selected_item = self.online_users_tree.focus()
         if not selected_item:
-            messagebox.showinfo("Invite Friend", "Please select a friend from the list to invite.")
+            ttk.dialogs.Messagebox.show_info("Please select a friend from the list to invite.", "Invite Friend")
             return
 
         selected_display_name = self.online_users_tree.item(selected_item, 'values')[0]
@@ -928,10 +919,10 @@ class WorkTracker:
         try:
             # Mailto link with subject and body
             webbrowser.open_new_tab(f'mailto:?subject={encoded_subject}&body={encoded_body}')
-            messagebox.showinfo("Invitation Sent", f"Your email client has been opened with an invitation for {selected_display_name}. Please send it manually.")
+            ttk.dialogs.Messagebox.show_info(f"Your email client has been opened with an invitation for {selected_display_name}. Please send it manually.", "Invitation Sent")
         except Exception as e:
             logging.error(f"Failed to open email client: {e}", exc_info=True)
-            messagebox.showerror("Error", "Could not open email client. Please try manually.")
+            ttk.dialogs.Messagebox.show_error("Could not open email client. Please try manually.", "Error")
 
 
     def update_stopwatch(self):
@@ -977,12 +968,12 @@ class WorkTracker:
                 self.update_stopwatch()
                 logging.info("Session resumed.")
         else:
-            messagebox.showwarning("Warning", "No session is currently running to pause/resume.")
+            ttk.dialogs.Messagebox.show_warning("No session is currently running to pause/resume.", "Warning")
 
     def start_session(self):
         try:
             if self.category_var.get() == "No Categories":
-                messagebox.showwarning("Warning", "Please add a category before starting a session.")
+                ttk.dialogs.Messagebox.show_warning("Please add a category before starting a session.", "Warning")
                 return
 
             self.start_time = datetime.datetime.now()
@@ -1006,7 +997,7 @@ class WorkTracker:
 
             if self.current_session_id is None:
                 logging.error("Failed to get session ID from database. Database insertion likely failed.")
-                messagebox.showerror("Error", "Failed to start session. Database error. Check app.log for details.")
+                ttk.dialogs.Messagebox.show_error("Failed to start session. Database error. Check app.log for details.", "Error")
                 self.stopwatch_running = False
                 self.is_running = False
                 self.start_button.config(state=tk.NORMAL)
@@ -1018,7 +1009,7 @@ class WorkTracker:
             logging.info(f"Session started successfully with category: {category}, ID: {self.current_session_id}")
         except Exception as e:
             logging.error(f"Error starting session: {e}", exc_info=True)
-            messagebox.showerror("Error", f"An unexpected error occurred while starting the session: {e}. Check app.log for details.")
+            ttk.dialogs.Messagebox.show_error(f"An unexpected error occurred while starting the session: {e}. Check app.log for details.", "Error")
             self.stopwatch_running = False
             self.is_running = False
             self.start_button.config(state=tk.NORMAL)
@@ -1055,14 +1046,13 @@ class WorkTracker:
 
         except Exception as e:
             logging.error(f"Error stopping session: {e}")
-            messagebox.showerror("Error", f"An error occurred while stopping the session: {e}")
+            ttk.dialogs.Messagebox.show_error(f"An error occurred while stopping the session: {e}", "Error")
 
     def display_session_duration(self):
         try:
             if self.start_time and self.end_time:
                 duration = self.end_time - self.start_time
-                messagebox.showinfo("Session duration",
-                                    f"Session duration: {duration}")
+                ttk.dialogs.Messagebox.show_info(f"Session duration: {duration}", "Session duration")
                 logging.info(f"Session duration displayed: {duration}")
             else:
                 logging.warning("Cannot display duration: start or end time missing.")
@@ -1073,8 +1063,7 @@ class WorkTracker:
         if self.history_window and tk.Toplevel.winfo_exists(self.history_window):
             self.history_window.lift()
             return
-        self.history_window = tk.Toplevel(self.root)
-        self.history_window.title("Work History")
+        self.history_window = ttk.Toplevel(title="Work History")
         self.history_window.geometry("800x600")
 
         filter_frame = ttk.Frame(self.history_window, padding=10)
@@ -1103,14 +1092,21 @@ class WorkTracker:
         self.history_search_entry = ttk.Entry(filter_frame, textvariable=self.history_search_text_var)
         self.history_search_entry.grid(row=1, column=1, columnspan=2, padx=5, pady=2, sticky="ew")
 
-        apply_filters_button = ttk.Button(filter_frame, text="Apply Filters", command=self.update_history_display)
-        apply_filters_button.grid(row=1, column=3, padx=5, pady=2, sticky="e")
+        # Container for the action buttons in the filter frame
+        filter_button_frame = ttk.Frame(filter_frame)
+        filter_button_frame.grid(row=1, column=3, padx=5, pady=2, sticky="e")
+
+        apply_filters_button = ttk.Button(filter_button_frame, text="Apply Filters", command=self.update_history_display, bootstyle="info-outline")
+        apply_filters_button.pack(side=tk.LEFT, padx=(0, 5))
+        
+        refresh_button = ttk.Button(filter_button_frame, text="Refresh", command=self.update_history_display, bootstyle="secondary-outline")
+        refresh_button.pack(side=tk.LEFT)
 
         filter_frame.columnconfigure(1, weight=1)
         filter_frame.columnconfigure(3, weight=1)
 
         self.history_tree = ttk.Treeview(self.history_window, columns=(
-            "ID", "Start Time", "End Time", "Category", "Notes"), show="headings")
+            "ID", "Start Time", "End Time", "Category", "Notes"), show="headings", bootstyle="primary")
         self.history_tree.heading("ID", text="ID")
         self.history_tree.heading("Start Time", text="Start Time")
         self.history_tree.heading("End Time", text="End Time")
@@ -1128,14 +1124,14 @@ class WorkTracker:
         history_action_frame = ttk.Frame(self.history_window, padding=5)
         history_action_frame.pack(fill="x", pady=5)
 
-        edit_session_button = ttk.Button(history_action_frame, text="Edit Selected Session", command=self.edit_selected_session)
+        edit_session_button = ttk.Button(history_action_frame, text="Edit Selected Session", command=self.edit_selected_session, bootstyle="warning-outline")
         edit_session_button.pack(side=tk.RIGHT, padx=5)
 
-        export_data_button = ttk.Button(history_action_frame, text="Export Data", command=self.export_data)
+        export_data_button = ttk.Button(history_action_frame, text="Export Data", command=self.export_data, bootstyle="primary-outline")
         export_data_button.pack(side=tk.RIGHT, padx=5)
 
         self.history_tree.bind("<Button-3>", self.show_history_context_menu)
-        self.history_context_menu = tk.Menu(self.history_window, tearoff=0)
+        self.history_context_menu = ttk.Menu(self.history_window, tearoff=0)
         self.history_context_menu.add_command(label="Edit Session", command=self.edit_selected_session)
         self.history_context_menu.add_command(label="Export Selected Data", command=self.export_data)
 
@@ -1153,25 +1149,24 @@ class WorkTracker:
         """Opens a dialog to edit the details of the selected session."""
         selected_item = self.history_tree.focus()
         if not selected_item:
-            messagebox.showinfo("Edit Session", "Please select a session to edit.")
+            ttk.dialogs.Messagebox.show_info("Please select a session to edit.", "Edit Session")
             return
 
         session_id = self.history_tree.item(selected_item, 'values')[0]
         session_details = self.send_db_command('get_session_by_id', (session_id,), expect_result=True)
 
         if not session_details:
-            messagebox.showerror("Error", "Could not retrieve session details.")
+            ttk.dialogs.Messagebox.show_error("Could not retrieve session details.", "Error")
             return
 
         s_id, s_start_time_str, s_end_time_str, s_category, s_notes = session_details
 
-        edit_dialog = tk.Toplevel(self.root)
-        edit_dialog.title(f"Edit Session ID: {s_id}")
+        edit_dialog = ttk.Toplevel(title=f"Edit Session ID: {s_id}")
         edit_dialog.transient(self.root)
         edit_dialog.grab_set()
 
-        form_frame = ttk.Frame(edit_dialog, padding=10)
-        form_frame.pack(padx=10, pady=10)
+        form_frame = ttk.Frame(edit_dialog, padding=20)
+        form_frame.pack(expand=True, fill=BOTH)
 
         ttk.Label(form_frame, text="Start Time (YYYY-MM-DD HH:MM:SS):").grid(row=0, column=0, sticky="w", pady=2)
         self.edit_start_time_var = tk.StringVar(value=s_start_time_str if s_start_time_str else "")
@@ -1194,14 +1189,14 @@ class WorkTracker:
         self.edit_notes_text.grid(row=3, column=1, sticky="ew", padx=5, pady=2)
         self.edit_notes_text.insert(tk.END, s_notes if s_notes else "")
 
-        button_frame = ttk.Frame(edit_dialog, padding=5)
-        button_frame.pack(pady=10)
+        button_frame = ttk.Frame(edit_dialog)
+        button_frame.pack(pady=20)
 
         save_button = ttk.Button(button_frame, text="Save Changes",
-                                 command=lambda: self.save_edited_session(edit_dialog, s_id))
+                                 command=lambda: self.save_edited_session(edit_dialog, s_id), bootstyle="success")
         save_button.pack(side=tk.LEFT, padx=5)
 
-        cancel_button = ttk.Button(button_frame, text="Cancel", command=edit_dialog.destroy)
+        cancel_button = ttk.Button(button_frame, text="Cancel", command=edit_dialog.destroy, bootstyle="secondary")
         cancel_button.pack(side=tk.RIGHT, padx=5)
 
         edit_dialog.wait_window()
@@ -1242,20 +1237,20 @@ class WorkTracker:
                         continue
                 
                 # If all parsing fails
-                messagebox.showerror("Input Error", f"Invalid {field_name} format. Please use a recognized format like 'YYYY-MM-DD HH:MM:SS' or ISO 8601.")
+                ttk.dialogs.Messagebox.show_error(f"Invalid {field_name} format. Please use a recognized format like 'YYYY-MM-DD HH:MM:SS' or ISO 8601.", "Input Error")
                 return "error"
 
             new_start_time = parse_datetime_string(new_start_time_str, "Start Time")
             if new_start_time == "error": return
             if not new_start_time:
-                messagebox.showerror("Input Error", "Start Time cannot be empty.")
+                ttk.dialogs.Messagebox.show_error("Start Time cannot be empty.", "Input Error")
                 return
 
             new_end_time = parse_datetime_string(new_end_time_str, "End Time")
             if new_end_time == "error": return
             
             if new_start_time and new_end_time and new_start_time > new_end_time:
-                messagebox.showerror("Input Error", "Start Time cannot be after End Time.")
+                ttk.dialogs.Messagebox.show_error("Start Time cannot be after End Time.", "Input Error")
                 return
 
             db_category = new_category if new_category != "Uncategorized" else None
@@ -1267,22 +1262,22 @@ class WorkTracker:
             )
 
             if success:
-                messagebox.showinfo("Success", "Session updated successfully!")
+                ttk.dialogs.Messagebox.show_info("Session updated successfully!", "Success")
                 dialog.destroy()
                 self.update_history_display()
             else:
-                messagebox.showerror("Error", "Failed to update session.")
+                ttk.dialogs.Messagebox.show_error("Failed to update session.", "Error")
 
         except Exception as e:
             logging.error(f"Error saving edited session: {e}", exc_info=True)
-            messagebox.showerror("Error", f"An error occurred while saving changes: {e}")
+            ttk.dialogs.Messagebox.show_error(f"An error occurred while saving changes: {e}", "Error")
 
 
     def export_data(self):
         """Allows users to export filtered history data to CSV or Excel."""
         items = self.history_tree.get_children()
         if not items:
-            messagebox.showinfo("Export Data", "No data available in the history view to export.")
+            ttk.dialogs.Messagebox.show_info("No data available in the history view to export.", "Export Data")
             return
 
         data_to_export = []
@@ -1308,17 +1303,17 @@ class WorkTracker:
             try:
                 if file_path.lower().endswith('.csv'):
                     df.to_csv(file_path, index=False)
-                    messagebox.showinfo("Export Success", f"Data successfully exported to CSV:\n{file_path}")
+                    ttk.dialogs.Messagebox.show_info(f"Data successfully exported to CSV:\n{file_path}", "Export Success")
                 elif file_path.lower().endswith('.xlsx'):
                     df.to_excel(file_path, index=False)
-                    messagebox.showinfo("Export Success", f"Data successfully exported to Excel:\n{file_path}")
+                    ttk.dialogs.Messagebox.show_info(f"Data successfully exported to Excel:\n{file_path}", "Export Success")
                 else:
-                    messagebox.showerror("Export Error", "Unsupported file format. Please choose .csv or .xlsx.")
+                    ttk.dialogs.Messagebox.show_error("Unsupported file format. Please choose .csv or .xlsx.", "Export Error")
             except Exception as e:
                 logging.error(f"Error exporting data: {e}")
-                messagebox.showerror("Export Error", f"An error occurred during export:\n{e}")
+                ttk.dialogs.Messagebox.show_error(f"An error occurred during export:\n{e}", "Export Error")
         else:
-            messagebox.showinfo("Export Cancelled", "Data export cancelled.")
+            ttk.dialogs.Messagebox.show_info("Data export cancelled.", "Export Cancelled")
 
     def update_history_display(self):
         """Updates the history treeview based on selected filters."""
@@ -1355,7 +1350,7 @@ class WorkTracker:
                     display_session[3] = "Uncategorized"
                 self.history_tree.insert("", "end", values=display_session)
         else:
-            messagebox.showinfo("Work History", "No sessions found matching the filters.")
+            ttk.dialogs.Messagebox.show_info("No sessions found matching the filters.", "Work History")
 
     def show_statistics(self):
         """Displays the statistics window."""
@@ -1363,29 +1358,42 @@ class WorkTracker:
             self.statistics_window.lift()
             return
 
-        self.statistics_window = tk.Toplevel(self.root)
-        self.statistics_window.title("Statistics")
+        self.statistics_window = ttk.Toplevel(title="Statistics")
+        self.statistics_window.geometry("800x600")
 
         all_categories_from_db = self.send_db_command('get_all_categories', expect_result=True)
         if all_categories_from_db is None:
             all_categories_from_db = []
         categories = ["All"] + all_categories_from_db + ["Uncategorized"]
 
+        # --- Main Stats Frame ---
+        stats_main_frame = ttk.Frame(self.statistics_window, padding=20)
+        stats_main_frame.pack(expand=True, fill=BOTH)
+
+        # --- Filter Controls ---
+        filter_frame = ttk.Frame(stats_main_frame)
+        filter_frame.pack(fill=X, pady=(0, 20))
+        
         view_var = tk.StringVar(self.statistics_window)
         view_var.set("Daily")
-        view_dropdown = ttk.Combobox(self.statistics_window, textvariable=view_var, values=[
-                                     "Daily", "Weekly", "Monthly", "Yearly"])
-        view_dropdown.grid(row=0, column=0, padx=5, pady=5)
+        view_dropdown = ttk.Combobox(filter_frame, textvariable=view_var, values=[
+                                     "Daily", "Weekly", "Monthly", "Yearly"], state="readonly", bootstyle="info")
+        view_dropdown.pack(side=LEFT, padx=(0,10))
 
         category_var = tk.StringVar(self.statistics_window)
         category_var.set("All")
         category_dropdown = ttk.Combobox(
-            self.statistics_window, textvariable=category_var, values=categories)
-        category_dropdown.grid(row=0, column=1, padx=5, pady=5)
+            filter_frame, textvariable=category_var, values=categories, state="readonly", bootstyle="info")
+        category_dropdown.pack(side=LEFT)
 
-        self.scorecard_label = ttk.Label(
-            self.statistics_window, text="")
-        self.scorecard_label.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
+        # --- Scorecard ---
+        self.scorecard_label = ttk.Label(stats_main_frame, text="", font=("Helvetica", 14), bootstyle="primary")
+        self.scorecard_label.pack(pady=10)
+        
+        # --- Chart Frame ---
+        chart_frame = ttk.Frame(stats_main_frame)
+        chart_frame.pack(expand=True, fill=BOTH)
+
 
         def update_stats():
             """Updates the statistics graph and scorecard."""
@@ -1396,22 +1404,20 @@ class WorkTracker:
 
             all_sessions_data = self.send_db_command('get_sessions', expect_result=True)
 
-            for widget in self.statistics_window.winfo_children():
-                if isinstance(widget, FigureCanvasTkAgg):
-                    widget.get_tk_widget().destroy()
+            # Clear previous chart
+            for widget in chart_frame.winfo_children():
+                widget.destroy()
 
             if not all_sessions_data:
-                messagebox.showinfo(
-                    "Statistics", "No data available for the selected filters.")
-                self.scorecard_label.config(text=f"Average Duration ({view}): {daily_average:.2f} minutes")
+                ttk.dialogs.Messagebox.show_info("No data available for the selected filters.", "Statistics")
+                self.scorecard_label.config(text=f"Average Duration ({view}): 0 minutes")
                 return
 
             df = pd.DataFrame(all_sessions_data, columns=["ID", "start_time", "end_time", "category", "notes"])
 
             if df.empty:
-                messagebox.showinfo(
-                    "Statistics", "No data available for the selected filters (after DataFrame creation).")
-                self.scorecard_label.config(text=f"Average Duration ({view}): {daily_average:.2f} minutes")
+                ttk.dialogs.Messagebox.show_info("No data available for the selected filters (after DataFrame creation).", "Statistics")
+                self.scorecard_label.config(text=f"Average Duration ({view}): 0 minutes")
                 return
 
             # Data preparation - Use format='mixed' for robust datetime parsing and force UTC
@@ -1423,8 +1429,8 @@ class WorkTracker:
             df_completed = df.dropna(subset=['start_time', 'end_time']).copy()
             
             if df_completed.empty:
-                messagebox.showinfo("Statistics", "No completed sessions to display for the selected filters.")
-                self.scorecard_label.config(text=f"Average Duration ({view}): {daily_average:.2f} minutes")
+                ttk.dialogs.Messagebox.show_info("No completed sessions to display for the selected filters.", "Statistics")
+                self.scorecard_label.config(text=f"Average Duration ({view}): 0 minutes")
                 return
 
             df_completed.loc[:, 'duration'] = (df_completed['end_time'] - df_completed['start_time']).dt.total_seconds() / 60
@@ -1434,8 +1440,8 @@ class WorkTracker:
             if category != "All":
                 df_completed = df_completed[df_completed['category'] == category].copy()
                 if df_completed.empty:
-                    messagebox.showinfo("Statistics", "No completed sessions available for the selected category.")
-                    self.scorecard_label.config(text=f"Average Duration ({view}): {daily_average:.2f} minutes")
+                    ttk.dialogs.Messagebox.show_info("No completed sessions available for the selected category.", "Statistics")
+                    self.scorecard_label.config(text=f"Average Duration ({view}): 0 minutes")
                     return
 
 
@@ -1444,6 +1450,7 @@ class WorkTracker:
             now_utc = datetime.datetime.now(datetime.timezone.utc)
             
             grouped = None
+            y_axis_label = "Minutes" # Default label
 
             if view == "Daily":
                 start_of_today_utc = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -1490,22 +1497,63 @@ class WorkTracker:
             # Ensure daily_average is not NaN if grouped is empty after reindex (e.g., no data for a given period)
             if pd.isna(daily_average):
                 daily_average = 0.0
+            
+            # New logic to switch between minutes and hours for the chart and format scorecard text
+            scorecard_text = ""
+            if grouped is not None and not grouped.empty and grouped.max() > 60:
+                grouped = grouped / 60
+                y_axis_label = "Hours"
+                
+                # Format scorecard for hours and minutes
+                total_avg_minutes = daily_average
+                avg_hours = int(total_avg_minutes // 60)
+                avg_rem_minutes = int(round(total_avg_minutes % 60))
+                
+                hour_str = f"{avg_hours} hour" + ("s" if avg_hours != 1 else "")
+                minute_str = f"{avg_rem_minutes} minute" + ("s" if avg_rem_minutes != 1 else "")
+
+                if avg_hours > 0 and avg_rem_minutes > 0:
+                    scorecard_text = f"{hour_str}, {minute_str}"
+                elif avg_hours > 0:
+                    scorecard_text = hour_str
+                else:
+                    scorecard_text = minute_str
+            else:
+                # Format scorecard for minutes
+                scorecard_text = f"{daily_average:.2f} minutes"
+
 
             if grouped is not None and not grouped.empty and grouped.sum() > 0:
+                plt.style.use('dark_background')
                 fig, ax = plt.subplots(figsize=(8, 4))
-                grouped.plot(kind='bar', ax=ax)
-                ax.set_ylabel("Minutes")
-                ax.set_title(f"{view} Statistics for {category} Category")
+                
+                # Use ttkbootstrap colors
+                colors = self.root.style.colors
+                grouped.plot(kind='bar', ax=ax, color=colors.primary)
+                
+                ax.set_ylabel(y_axis_label, color=colors.fg)
+                ax.set_title(f"{view} Statistics for {category} Category", color=colors.fg)
+                
+                fig.patch.set_facecolor(colors.bg)
+                ax.set_facecolor(colors.bg)
+                
+                ax.tick_params(axis='x', colors=colors.fg)
+                ax.tick_params(axis='y', colors=colors.fg)
+                ax.spines['bottom'].set_color(colors.fg)
+                ax.spines['top'].set_color(colors.fg) 
+                ax.spines['right'].set_color(colors.fg)
+                ax.spines['left'].set_color(colors.fg)
+
                 fig.tight_layout()
 
-                canvas = FigureCanvasTkAgg(fig, master=self.statistics_window)
+                canvas = FigureCanvasTkAgg(fig, master=chart_frame)
                 canvas.draw()
-                canvas.get_tk_widget().grid(row=1, column=0, columnspan=2, padx=5, pady=5)
+                canvas.get_tk_widget().pack(expand=True, fill=BOTH)
             else:
-                messagebox.showinfo("Statistics", "No work data to display for the selected period and category.")
-                daily_average = 0.0 # Ensure average is 0 if no plot
+                ttk.dialogs.Messagebox.show_info("No work data to display for the selected period and category.", "Statistics")
+                scorecard_text = "0 minutes" # Default back to minutes if no data
 
-            self.scorecard_label.config(text=f"Average Duration ({view}): {daily_average:.2f} minutes")
+            self.scorecard_label.config(text=f"Average Duration ({view}): {scorecard_text}")
 
         update_stats()
         view_dropdown.bind("<<ComboboxSelected>>",
@@ -1789,6 +1837,6 @@ class Database:
 
 
 if __name__ == "__main__":
-    root = ThemedTk(theme="arc")
+    root = ttk.Window(themename="vapor")
     app = WorkTracker(root)
     root.mainloop()
