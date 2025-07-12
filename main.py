@@ -1372,9 +1372,9 @@ class WorkTracker:
         categories = ["All"] + all_categories_from_db + ["Uncategorized"]
 
         view_var = tk.StringVar(self.statistics_window)
-        view_var.set("Weeks")
+        view_var.set("Daily")
         view_dropdown = ttk.Combobox(self.statistics_window, textvariable=view_var, values=[
-                                     "Weeks", "Months", "Years"])
+                                     "Daily", "Weekly", "Monthly", "Yearly"])
         view_dropdown.grid(row=0, column=0, padx=5, pady=5)
 
         category_var = tk.StringVar(self.statistics_window)
@@ -1403,7 +1403,7 @@ class WorkTracker:
             if not all_sessions_data:
                 messagebox.showinfo(
                     "Statistics", "No data available for the selected filters.")
-                self.scorecard_label.config(text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
+                self.scorecard_label.config(text=f"Average Duration ({view}): {daily_average:.2f} minutes")
                 return
 
             df = pd.DataFrame(all_sessions_data, columns=["ID", "start_time", "end_time", "category", "notes"])
@@ -1411,7 +1411,7 @@ class WorkTracker:
             if df.empty:
                 messagebox.showinfo(
                     "Statistics", "No data available for the selected filters (after DataFrame creation).")
-                self.scorecard_label.config(text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
+                self.scorecard_label.config(text=f"Average Duration ({view}): {daily_average:.2f} minutes")
                 return
 
             # Data preparation - Use format='mixed' for robust datetime parsing and force UTC
@@ -1424,63 +1424,74 @@ class WorkTracker:
             
             if df_completed.empty:
                 messagebox.showinfo("Statistics", "No completed sessions to display for the selected filters.")
-                self.scorecard_label.config(text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
+                self.scorecard_label.config(text=f"Average Duration ({view}): {daily_average:.2f} minutes")
                 return
 
-            df_completed['duration'] = (df_completed['end_time'] - df_completed['start_time']
-                              ).dt.total_seconds()/60
+            df_completed.loc[:, 'duration'] = (df_completed['end_time'] - df_completed['start_time']).dt.total_seconds() / 60
 
-            df_completed['category'] = df_completed['category'].fillna('Uncategorized')
+            df_completed.loc[:, 'category'] = df_completed['category'].fillna('Uncategorized')
 
             if category != "All":
-                df_completed = df_completed[df_completed['category'] == category]
+                df_completed = df_completed[df_completed['category'] == category].copy()
                 if df_completed.empty:
                     messagebox.showinfo("Statistics", "No completed sessions available for the selected category.")
-                    self.scorecard_label.config(text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
+                    self.scorecard_label.config(text=f"Average Duration ({view}): {daily_average:.2f} minutes")
                     return
 
 
             # --- Crucial Fix: Ensure comparison dates are timezone-aware (UTC) ---
             # Get current time in UTC
             now_utc = datetime.datetime.now(datetime.timezone.utc)
+            
+            grouped = None
 
-            if view == "Weeks":
+            if view == "Daily":
+                start_of_today_utc = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+                df_filtered = df_completed[df_completed['start_time'] >= start_of_today_utc].copy()
+                if not df_filtered.empty:
+                    df_filtered.loc[:, 'hour'] = df_filtered['start_time'].dt.hour
+                    all_hours = list(range(24))
+                    grouped = df_filtered.groupby('hour')['duration'].sum().reindex(all_hours, fill_value=0)
+                    daily_average = grouped.mean()
+
+            elif view == "Weekly":
                 # Get start of week (Monday) in UTC
                 start_of_week_utc = now_utc - datetime.timedelta(days=now_utc.weekday())
                 start_of_week_utc = start_of_week_utc.replace(hour=0, minute=0, second=0, microsecond=0) # Ensure start of day
                 
                 df_filtered = df_completed[df_completed['start_time'] >= start_of_week_utc].copy()
-                df_filtered.loc[:, 'day'] = df_filtered['start_time'].dt.day_name()
-                all_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-                grouped = df_filtered.groupby('day')['duration'].sum().reindex(all_days, fill_value=0)
-                daily_average = grouped.mean()
+                if not df_filtered.empty:
+                    df_filtered.loc[:, 'day'] = df_filtered['start_time'].dt.day_name()
+                    all_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                    grouped = df_filtered.groupby('day')['duration'].sum().reindex(all_days, fill_value=0)
+                    daily_average = grouped.mean()
 
-            elif view == "Months":
+            elif view == "Monthly":
                 # Start of month in UTC
                 start_of_month_utc = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
                 df_filtered = df_completed[(df_completed['start_time'] >= start_of_month_utc) & (df_completed['start_time'].dt.month == now_utc.month) & (df_completed['start_time'].dt.year == now_utc.year)].copy()
-                df_filtered.loc[:, 'day'] = df_filtered['start_time'].dt.day
-                # Ensure all days of the month are present up to current day (in UTC context)
-                # This needs to consider the actual days in the current month, relative to UTC.
-                num_days_in_current_month = (now_utc.replace(month=now_utc.month%12+1, day=1) - datetime.timedelta(days=1)).day
-                days_in_month_range = list(range(1, num_days_in_current_month + 1)) # All days of the month
-                grouped = df_filtered.groupby('day')['duration'].sum().reindex(days_in_month_range, fill_value=0)
-                daily_average = grouped.mean()
+                if not df_filtered.empty:
+                    df_filtered.loc[:, 'day'] = df_filtered['start_time'].dt.day
+                    num_days_in_current_month = (now_utc.replace(month=now_utc.month % 12 + 1, day=1) - datetime.timedelta(days=1)).day
+                    days_in_month_range = list(range(1, num_days_in_current_month + 1))
+                    grouped = df_filtered.groupby('day')['duration'].sum().reindex(days_in_month_range, fill_value=0)
+                    daily_average = grouped.mean()
 
-            elif view == "Years":
+            elif view == "Yearly":
                 # Start of year in UTC
                 start_of_year_utc = now_utc.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
                 df_filtered = df_completed[df_completed['start_time'] >= start_of_year_utc].copy()
-                df_filtered.loc[:, 'month'] = df_filtered['start_time'].dt.month_name()
-                all_months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-                grouped = df_filtered.groupby('month')['duration'].sum().reindex(all_months, fill_value=0)
-                daily_average = grouped.mean()
+                if not df_filtered.empty:
+                    df_filtered.loc[:, 'month'] = df_filtered['start_time'].dt.month_name()
+                    all_months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+                    grouped = df_filtered.groupby('month')['duration'].sum().reindex(all_months, fill_value=0)
+                    daily_average = grouped.mean()
 
             # Ensure daily_average is not NaN if grouped is empty after reindex (e.g., no data for a given period)
             if pd.isna(daily_average):
                 daily_average = 0.0
 
-            if not grouped.empty and grouped.sum() > 0:
+            if grouped is not None and not grouped.empty and grouped.sum() > 0:
                 fig, ax = plt.subplots(figsize=(8, 4))
                 grouped.plot(kind='bar', ax=ax)
                 ax.set_ylabel("Minutes")
@@ -1494,7 +1505,7 @@ class WorkTracker:
                 messagebox.showinfo("Statistics", "No work data to display for the selected period and category.")
                 daily_average = 0.0 # Ensure average is 0 if no plot
 
-            self.scorecard_label.config(text=f"Average Duration ({view[:-1]}ly): {daily_average:.2f} minutes")
+            self.scorecard_label.config(text=f"Average Duration ({view}): {daily_average:.2f} minutes")
 
         update_stats()
         view_dropdown.bind("<<ComboboxSelected>>",
