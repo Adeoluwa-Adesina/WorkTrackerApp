@@ -1,0 +1,3 @@
+([('Work Tracker',
+   '/Users/adeoluwa/Documents/WorkTrackerApp/dist/Work Tracker',
+   'EXECUTABLE')],)

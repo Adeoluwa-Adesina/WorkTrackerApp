@@ -13,7 +13,15 @@ import json # For parsing supabase config
 import uuid # For generating anonymous user IDs if needed before Supabase auth
 import webbrowser # New import for opening web links/email clients
 import urllib.parse # New import for URL encoding
-import sys # Import sys to get executable path
+import sys
+
+# --- Battery Optimization: Logging Config ---
+logging.basicConfig(
+    filename='work_tracker.log',
+    level=logging.WARNING,  # Set to INFO or DEBUG if needed
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+ # Import sys to get executable path
 
 # Import Supabase client
 try:
