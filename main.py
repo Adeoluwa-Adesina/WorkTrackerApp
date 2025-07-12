@@ -117,7 +117,7 @@ class WorkTracker:
 
         # Stopwatch
         self.stopwatch_label = ttk.Label(
-            root, text="00:00:00.000", font=("Arial", 14))
+            root, text="00:00:00", font=("Arial", 14))
         self.stopwatch_label.pack(pady=5)
 
         # Categories
@@ -942,11 +942,12 @@ class WorkTracker:
             self.elapsed_time = elapsed.total_seconds()
 
             if self.root.winfo_ismapped():
-                formatted_time = time.strftime("%H:%M:%S", time.gmtime(
-                    self.elapsed_time)) + f".{int((self.elapsed_time % 1) * 1000):03}"
+                # Round elapsed time to the nearest second for display
+                rounded_elapsed_time = round(self.elapsed_time)
+                formatted_time = time.strftime("%H:%M:%S", time.gmtime(rounded_elapsed_time))
                 self.stopwatch_label.config(text=formatted_time)
         
-        self.root.after(10, self.update_stopwatch)
+        self.root.after(50, self.update_stopwatch) # Update more frequently for smoother feel, though display is per second
 
     def toggle_pause_resume(self):
         """Toggles the session between paused and resumed states."""
@@ -1172,11 +1173,11 @@ class WorkTracker:
         form_frame = ttk.Frame(edit_dialog, padding=10)
         form_frame.pack(padx=10, pady=10)
 
-        ttk.Label(form_frame, text="Start Time (YYYY-MM-DD HH:MM:SS.ffffff):").grid(row=0, column=0, sticky="w", pady=2)
+        ttk.Label(form_frame, text="Start Time (YYYY-MM-DD HH:MM:SS):").grid(row=0, column=0, sticky="w", pady=2)
         self.edit_start_time_var = tk.StringVar(value=s_start_time_str if s_start_time_str else "")
         ttk.Entry(form_frame, textvariable=self.edit_start_time_var, width=35).grid(row=0, column=1, sticky="ew", padx=5, pady=2)
 
-        ttk.Label(form_frame, text="End Time (YYYY-MM-DD HH:MM:SS.ffffff):").grid(row=1, column=0, sticky="w", pady=2)
+        ttk.Label(form_frame, text="End Time (YYYY-MM-DD HH:MM:SS):").grid(row=1, column=0, sticky="w", pady=2)
         self.edit_end_time_var = tk.StringVar(value=s_end_time_str if s_end_time_str else "")
         ttk.Entry(form_frame, textvariable=self.edit_end_time_var, width=35).grid(row=1, column=1, sticky="ew", padx=5, pady=2)
 
@@ -1216,37 +1217,43 @@ class WorkTracker:
             new_start_time = None
             new_end_time = None
 
-            time_formats = ['%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S']
-
-            if new_start_time_str:
-                parsed = False
-                for fmt in time_formats:
+            # --- Robust Datetime Parsing ---
+            def parse_datetime_string(dt_str, field_name):
+                if not dt_str:
+                    return None
+                # Prefer dateutil.parser.parse if available, as it's very robust
+                if DATEUTIL_AVAILABLE:
                     try:
-                        new_start_time = datetime.datetime.strptime(new_start_time_str, fmt)
-                        parsed = True
-                        break
+                        return date_parse(dt_str)
+                    except (ValueError, TypeError):
+                        pass # Fallback to manual parsing
+                
+                # Fallback 1: ISO format (handles timezone from database)
+                try:
+                    return datetime.datetime.fromisoformat(dt_str)
+                except ValueError:
+                    pass
+
+                # Fallback 2: Formats without timezone
+                for fmt in ['%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S']:
+                    try:
+                        return datetime.datetime.strptime(dt_str, fmt)
                     except ValueError:
                         continue
-                if not parsed:
-                    messagebox.showerror("Input Error", "Invalid Start Time format. Use Jamboree-MM-DD HH:MM:SS or Jamboree-MM-DD HH:MM:SS.ffffff")
-                    return
-            else:
+                
+                # If all parsing fails
+                messagebox.showerror("Input Error", f"Invalid {field_name} format. Please use a recognized format like 'YYYY-MM-DD HH:MM:SS' or ISO 8601.")
+                return "error"
+
+            new_start_time = parse_datetime_string(new_start_time_str, "Start Time")
+            if new_start_time == "error": return
+            if not new_start_time:
                 messagebox.showerror("Input Error", "Start Time cannot be empty.")
                 return
 
-            if new_end_time_str:
-                parsed = False
-                for fmt in time_formats:
-                    try:
-                        new_end_time = datetime.datetime.strptime(new_end_time_str, fmt)
-                        parsed = True
-                        break
-                    except ValueError:
-                        continue
-                if not parsed:
-                    messagebox.showerror("Input Error", "Invalid End Time format. Use Jamboree-MM-DD HH:MM:SS or Jamboree-MM-DD HH:MM:SS.ffffff")
-                    return
-
+            new_end_time = parse_datetime_string(new_end_time_str, "End Time")
+            if new_end_time == "error": return
+            
             if new_start_time and new_end_time and new_start_time > new_end_time:
                 messagebox.showerror("Input Error", "Start Time cannot be after End Time.")
                 return
@@ -1267,8 +1274,9 @@ class WorkTracker:
                 messagebox.showerror("Error", "Failed to update session.")
 
         except Exception as e:
-            logging.error(f"Error saving edited session: {e}")
+            logging.error(f"Error saving edited session: {e}", exc_info=True)
             messagebox.showerror("Error", f"An error occurred while saving changes: {e}")
+
 
     def export_data(self):
         """Allows users to export filtered history data to CSV or Excel."""
@@ -1441,8 +1449,8 @@ class WorkTracker:
                 start_of_week_utc = now_utc - datetime.timedelta(days=now_utc.weekday())
                 start_of_week_utc = start_of_week_utc.replace(hour=0, minute=0, second=0, microsecond=0) # Ensure start of day
                 
-                df_filtered = df_completed[df_completed['start_time'] >= start_of_week_utc]
-                df_filtered['day'] = df_filtered['start_time'].dt.day_name()
+                df_filtered = df_completed[df_completed['start_time'] >= start_of_week_utc].copy()
+                df_filtered.loc[:, 'day'] = df_filtered['start_time'].dt.day_name()
                 all_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
                 grouped = df_filtered.groupby('day')['duration'].sum().reindex(all_days, fill_value=0)
                 daily_average = grouped.mean()
@@ -1450,8 +1458,8 @@ class WorkTracker:
             elif view == "Months":
                 # Start of month in UTC
                 start_of_month_utc = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                df_filtered = df_completed[(df_completed['start_time'] >= start_of_month_utc) & (df_completed['start_time'].dt.month == now_utc.month) & (df_completed['start_time'].dt.year == now_utc.year)]
-                df_filtered['day'] = df_filtered['start_time'].dt.day
+                df_filtered = df_completed[(df_completed['start_time'] >= start_of_month_utc) & (df_completed['start_time'].dt.month == now_utc.month) & (df_completed['start_time'].dt.year == now_utc.year)].copy()
+                df_filtered.loc[:, 'day'] = df_filtered['start_time'].dt.day
                 # Ensure all days of the month are present up to current day (in UTC context)
                 # This needs to consider the actual days in the current month, relative to UTC.
                 num_days_in_current_month = (now_utc.replace(month=now_utc.month%12+1, day=1) - datetime.timedelta(days=1)).day
@@ -1462,8 +1470,8 @@ class WorkTracker:
             elif view == "Years":
                 # Start of year in UTC
                 start_of_year_utc = now_utc.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-                df_filtered = df_completed[df_completed['start_time'] >= start_of_year_utc]
-                df_filtered['month'] = df_filtered['start_time'].dt.month_name()
+                df_filtered = df_completed[df_completed['start_time'] >= start_of_year_utc].copy()
+                df_filtered.loc[:, 'month'] = df_filtered['start_time'].dt.month_name()
                 all_months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
                 grouped = df_filtered.groupby('month')['duration'].sum().reindex(all_months, fill_value=0)
                 daily_average = grouped.mean()
