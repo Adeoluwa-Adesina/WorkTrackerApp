@@ -16,13 +16,19 @@ import webbrowser # New import for opening web links/email clients
 import urllib.parse # New import for URL encoding
 import sys
 import httpx # Import httpx to configure timeouts
+import appdirs
 
 # --- Google API Imports ---
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+try:
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from googleapiclient.discovery import build
+    from googleapiclient.errors import HttpError
+    GOOGLE_API_AVAILABLE = True
+except ImportError:
+    logging.error("Google API libraries not found. Please install them using 'pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib'")
+    GOOGLE_API_AVAILABLE = False
 
 # --- ttkbootstrap Import ---
 try:
@@ -1085,7 +1091,7 @@ class WorkTracker:
         header_frame = ttk.Frame(todo_frame)
         header_frame.pack(fill=X, pady=(0, 10))
         
-        sync_button = ttk.Button(header_frame, text="Sync with Google", bootstyle="info-outline", command=self.sync_google_tasks_placeholder)
+        sync_button = ttk.Button(header_frame, text="Sync with Google", bootstyle="info-outline", command=self.sync_google_tasks)
         sync_button.pack(side=RIGHT)
 
         # --- Task List Display ---
@@ -1183,9 +1189,210 @@ class WorkTracker:
         self.send_db_command('update_task_starred', (task_id, new_starred_val, timestamp), expect_result=False)
         self.load_local_tasks()
         
-    def sync_google_tasks_placeholder(self):
-        """Placeholder for Google Tasks sync functionality."""
-        ttk.dialogs.Messagebox.show_info("Sync with Google Tasks is not yet implemented.", "Coming Soon!")
+    def authenticate_google_tasks(self):
+        """Authenticates with Google Tasks API using OAuth 2.0."""
+        creds = None
+        
+        # Define paths for credentials and token
+        user_data_dir = appdirs.user_data_dir("WorkTracker", "WorkTracker")
+        
+        # --- FIX: Ensure the data directory exists before proceeding ---
+        if not os.path.exists(user_data_dir):
+            os.makedirs(user_data_dir)
+            
+        token_path = os.path.join(user_data_dir, 'token.json')
+        credentials_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.json')
+
+        # The SCOPES define the level of access we are requesting.
+        SCOPES = ['https://www.googleapis.com/auth/tasks']
+
+        # The file token.json stores the user's access and refresh tokens.
+        if os.path.exists(token_path):
+            try:
+                creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+            except Exception as e:
+                logging.error(f"Error loading token.json: {e}")
+                creds = None
+
+        # If there are no (valid) credentials available, let the user log in.
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                try:
+                    creds.refresh(Request())
+                except Exception as e:
+                    logging.error(f"Error refreshing credentials: {e}")
+                    creds = None # Force re-login
+            else:
+                try:
+                    flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
+                    creds = flow.run_local_server(port=0)
+                except FileNotFoundError:
+                    ttk.dialogs.Messagebox.show_error("Could not find credentials.json. Please ensure it's in the same directory as the application.", "Authentication Error")
+                    return None
+                except Exception as e:
+                    logging.error(f"Error during authentication flow: {e}")
+                    ttk.dialogs.Messagebox.show_error(f"An unexpected error occurred during authentication: {e}", "Authentication Error")
+                    return None
+            
+            # Save the credentials for the next run
+            try:
+                with open(token_path, 'w') as token:
+                    token.write(creds.to_json())
+            except Exception as e:
+                logging.error(f"Error saving authentication token: {e}")
+                ttk.dialogs.Messagebox.show_warning("Could not save authentication token. You may need to re-authenticate next time.", "Token Save Error")
+        
+        return creds
+
+    def sync_google_tasks(self):
+        """Initiates the sync process with Google Tasks."""
+        if not GOOGLE_API_AVAILABLE:
+            ttk.dialogs.Messagebox.show_error("Google API libraries are not installed. Please run 'pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib'", "API Error")
+            return
+
+        logging.info("Starting Google Tasks sync process.")
+        creds = self.authenticate_google_tasks()
+        if not creds:
+            logging.warning("Google Tasks authentication failed or was cancelled.")
+            return
+
+        try:
+            service = build('tasks', 'v1', credentials=creds)
+            
+            task_list_id = self.send_db_command('get_setting', ('google_task_list_id',), expect_result=True)
+            if not task_list_id:
+                task_list_id = self.choose_task_list(service)
+                if not task_list_id:
+                    logging.info("User did not select a task list. Aborting sync.")
+                    return
+                self.send_db_command('set_setting', ('google_task_list_id', task_list_id))
+
+            self.perform_two_way_sync(service, task_list_id)
+
+            self.load_local_tasks()
+            ttk.dialogs.Messagebox.show_info("Sync with Google Tasks complete!", "Sync Successful")
+
+        except HttpError as err:
+            logging.error(f"An API error occurred: {err}")
+            ttk.dialogs.Messagebox.show_error(f"An API error occurred: {err}", "API Error")
+        except Exception as e:
+            logging.error(f"An unexpected error occurred during sync: {e}", exc_info=True)
+            ttk.dialogs.Messagebox.show_error(f"An unexpected error occurred during sync: {e}", "Sync Error")
+
+    def choose_task_list(self, service):
+        """Fetches user's task lists and prompts them to choose one."""
+        try:
+            tasklists_result = service.tasklists().list(maxResults=100).execute()
+            items = tasklists_result.get('items', [])
+
+            if not items:
+                ttk.dialogs.Messagebox.show_info("No Google Task lists found. A new list 'WorkTracker' will be created.", "Task List")
+                new_list = {'title': 'WorkTracker'}
+                created_list = service.tasklists().insert(body=new_list).execute()
+                return created_list['id']
+
+            list_names = [item['title'] for item in items]
+            
+            choice_dialog = tk.Toplevel(self.root)
+            choice_dialog.title("Choose a Task List")
+            tk.Label(choice_dialog, text="Select a Google Task list to sync with:").pack(padx=20, pady=10)
+            
+            list_var = tk.StringVar(value=list_names[0])
+            dropdown = ttk.Combobox(choice_dialog, textvariable=list_var, values=list_names, state="readonly")
+            dropdown.pack(padx=20, pady=10, fill=X)
+            
+            chosen_list_id = None
+            def on_ok():
+                nonlocal chosen_list_id
+                selected_title = list_var.get()
+                chosen_list_id = next((item['id'] for item in items if item['title'] == selected_title), None)
+                choice_dialog.destroy()
+
+            ok_button = ttk.Button(choice_dialog, text="OK", command=on_ok)
+            ok_button.pack(pady=10)
+            
+            choice_dialog.transient(self.root)
+            choice_dialog.grab_set()
+            self.root.wait_window(choice_dialog)
+            
+            return chosen_list_id
+
+        except Exception as e:
+            logging.error(f"Failed to fetch or choose task lists: {e}")
+            ttk.dialogs.Messagebox.show_error(f"Failed to fetch Google Task lists: {e}", "API Error")
+            return None
+
+    def perform_two_way_sync(self, service, task_list_id):
+        """Performs the two-way sync between local DB and Google Tasks."""
+        logging.info("Performing two-way sync.")
+        
+        # --- Step 1: Push local deletions to Google ---
+        deleted_google_ids = self.send_db_command('get_deleted_task_ids', expect_result=True)
+        if deleted_google_ids:
+            for (google_id,) in deleted_google_ids:
+                try:
+                    service.tasks().delete(tasklist=task_list_id, task=google_id).execute()
+                    self.send_db_command('purge_deleted_task', (google_id,))
+                    logging.info(f"Deleted task {google_id} from Google.")
+                except HttpError as e:
+                    if e.resp.status == 404: # Already deleted on Google
+                        self.send_db_command('purge_deleted_task', (google_id,))
+                    else:
+                        logging.error(f"Failed to delete task {google_id} from Google: {e}")
+
+        # --- Step 2: Fetch all local and remote tasks ---
+        local_tasks = self.send_db_command('get_tasks', expect_result=True)
+        local_tasks_map = {task[4]: task for task in local_tasks if task[4]}
+        
+        remote_tasks_result = service.tasks().list(tasklist=task_list_id, showCompleted=True, maxResults=100).execute()
+        remote_tasks = remote_tasks_result.get('items', [])
+        remote_tasks_map = {task['id']: task for task in remote_tasks}
+        
+        # --- Step 3: Sync local to remote (create and update) ---
+        for local_task in local_tasks:
+            local_id, title, status, starred, google_id, last_mod = local_task
+            
+            if not google_id:
+                new_task_body = {'title': title, 'status': status}
+                try:
+                    created_task = service.tasks().insert(tasklist=task_list_id, body=new_task_body).execute()
+                    new_google_id = created_task['id']
+                    new_last_mod = created_task['updated']
+                    self.send_db_command('update_task_with_google_id', (local_id, new_google_id, new_last_mod))
+                    logging.info(f"Created new task on Google: '{title}'")
+                except Exception as e:
+                    logging.error(f"Failed to create new task on Google: {e}")
+            
+            elif google_id in remote_tasks_map:
+                remote_task = remote_tasks_map[google_id]
+                remote_last_mod = remote_task['updated']
+                
+                if last_mod > remote_last_mod:
+                    update_body = {'id': google_id, 'title': title, 'status': status}
+                    try:
+                        updated_task = service.tasks().update(tasklist=task_list_id, task=google_id, body=update_body).execute()
+                        self.send_db_command('update_task', (local_id, title, status, starred, updated_task['updated']))
+                        logging.info(f"Updated task on Google: '{title}'")
+                    except Exception as e:
+                        logging.error(f"Failed to update task on Google: {e}")
+
+        # --- Step 4: Sync remote to local (create and update) ---
+        for google_id, remote_task in remote_tasks_map.items():
+            title = remote_task.get('title', '')
+            status = remote_task.get('status', 'needsAction')
+            remote_last_mod = remote_task['updated']
+            
+            if google_id not in local_tasks_map:
+                self.send_db_command('insert_task', (title, remote_last_mod, google_id, status))
+                logging.info(f"Created new local task from Google: '{title}'")
+            
+            else:
+                local_task = local_tasks_map[google_id]
+                local_id, _, _, local_starred, _, local_last_mod = local_task
+                
+                if remote_last_mod > local_last_mod:
+                    self.send_db_command('update_task', (local_id, title, status, local_starred, remote_last_mod))
+                    logging.info(f"Updated local task from Google: '{title}'")
 
     def show_history(self):
         if self.history_window and tk.Toplevel.winfo_exists(self.history_window):
