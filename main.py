@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import font as tkfont # Import the font module
 import datetime
 import time
 import sqlite3
@@ -14,6 +15,7 @@ import uuid # For generating anonymous user IDs if needed before Supabase auth
 import webbrowser # New import for opening web links/email clients
 import urllib.parse # New import for URL encoding
 import sys
+import httpx # Import httpx to configure timeouts
 
 # --- ttkbootstrap Import ---
 try:
@@ -36,7 +38,7 @@ logging.basicConfig(
 
 # Import Supabase client
 try:
-    from supabase import create_client, Client
+    from supabase import create_client, Client, ClientOptions
     SUPABASE_AVAILABLE = True
 except ImportError:
     logging.error("Supabase Python library not found. Cloud sync functionality will be disabled. Please install it using 'pip install supabase'.")
@@ -94,7 +96,7 @@ class WorkTracker:
         # root window settings
         self.root = root
         self.root.title("Work Tracker")
-        self.root.geometry("600x550")
+        self.root.geometry("600x750")
 
         self.start_time = None
         self.is_running = False
@@ -148,6 +150,9 @@ class WorkTracker:
         self.task_text = tk.Text(task_frame, height=4, width=50, relief="flat", bg=self.root.style.colors.inputbg, fg=self.root.style.colors.fg, insertbackground=self.root.style.colors.fg)
         self.task_text.pack(expand=True, fill=BOTH)
 
+        # --- To-Do List ---
+        self.setup_todo_list(main_frame)
+        
         # --- Control Buttons ---
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(pady=20)
@@ -201,6 +206,7 @@ class WorkTracker:
         self.root.after(200, self.update_category_dropdown)
         self.root.after(300, self.load_default_category_setting)
         self.root.after(400, self.load_display_name_setting)
+        self.root.after(500, self.load_local_tasks)
         
         # Schedule the first heartbeat and subsequent heartbeats
         self.root.after(5000, self._schedule_heartbeat) # Initial call after 5 seconds
@@ -265,8 +271,12 @@ class WorkTracker:
             return
         
         try:
+            # --- Corrected Timeout Configuration ---
             # create_client will raise SupabaseException if URL or Key is truly invalid
-            self.supabase_client: Client = create_client(supabase_url, supabase_key)
+            self.supabase_client: Client = create_client(
+                supabase_url, 
+                supabase_key,
+            )
             logging.info("Supabase client created successfully.")
 
             # Ensure a local_unique_user_id exists for Supabase
@@ -1059,6 +1069,117 @@ class WorkTracker:
         except Exception as e:
             logging.error(f"Error displaying session duration: {e}")
 
+    def setup_todo_list(self, parent_frame):
+        """Creates and configures the to-do list UI elements."""
+        todo_frame = ttk.Labelframe(parent_frame, text="To-Do List", padding=15)
+        todo_frame.pack(fill=BOTH, expand=True, pady=10, padx=5)
+
+        # --- Header with Sync Button ---
+        header_frame = ttk.Frame(todo_frame)
+        header_frame.pack(fill=X, pady=(0, 10))
+        
+        sync_button = ttk.Button(header_frame, text="Sync with Google", bootstyle="info-outline", command=self.sync_google_tasks_placeholder)
+        sync_button.pack(side=RIGHT)
+
+        # --- Task List Display ---
+        self.task_list = ttk.Treeview(todo_frame, columns=("star", "task"), show="", bootstyle="primary")
+        self.task_list.pack(expand=True, fill=BOTH)
+        self.task_list.column("star", width=30, anchor='center')
+        self.task_list.column("task", width=450)
+
+        # --- Add New Task Entry ---
+        add_task_frame = ttk.Frame(todo_frame)
+        add_task_frame.pack(fill=X, pady=(10, 0))
+
+        self.new_task_var = tk.StringVar()
+        new_task_entry = ttk.Entry(add_task_frame, textvariable=self.new_task_var, bootstyle="info")
+        new_task_entry.pack(side=LEFT, expand=True, fill=X, padx=(0, 10))
+        new_task_entry.bind("<Return>", self.add_local_task)
+        
+        add_task_button = ttk.Button(add_task_frame, text="Add Task", command=self.add_local_task, bootstyle="success")
+        add_task_button.pack(side=LEFT)
+
+        # --- Bind events ---
+        self.task_list.bind("<Button-1>", self.handle_task_click)
+        
+        # --- Configure Tags for Styling ---
+        strikethrough_font = tkfont.Font(family="Helvetica", size=10, overstrike=True)
+        self.task_list.tag_configure('completed', foreground='gray', font=strikethrough_font)
+
+
+    def handle_task_click(self, event):
+        """Handles clicks within the task list to toggle status or starred."""
+        region = self.task_list.identify("region", event.x, event.y)
+        if not region:
+            return
+
+        column = self.task_list.identify_column(event.x)
+        item_id = self.task_list.identify_row(event.y)
+
+        if not item_id:
+            return
+
+        task_db_id = self.task_list.item(item_id, "tags")[0]
+
+        if column == "#1":  # Star column
+            self.toggle_task_starred(task_db_id)
+        else: # Task title column (for checking off)
+            self.toggle_task_status(task_db_id)
+
+    def load_local_tasks(self):
+        """Loads tasks from the local database and populates the to-do list UI."""
+        for item in self.task_list.get_children():
+            self.task_list.delete(item)
+
+        tasks = self.send_db_command('get_tasks', expect_result=True)
+        
+        # Sort tasks: starred first, then by last modified
+        tasks.sort(key=lambda x: (not x[3], x[5]), reverse=True)
+
+        for task in tasks:
+            task_id, title, status, starred, _, _ = task
+            star_icon = "★" if starred else "☆"
+            
+            # Insert item into Treeview, using the database ID as a tag
+            item = self.task_list.insert("", "end", values=(star_icon, title), tags=(task_id,))
+            
+            if status == 'completed':
+                self.task_list.item(item, tags=(task_id, 'completed'))
+
+    def add_local_task(self, event=None):
+        """Adds a new task to the local database and updates the UI."""
+        title = self.new_task_var.get().strip()
+        if not title:
+            return
+
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        
+        self.send_db_command('insert_task', (title, timestamp), expect_result=False)
+        self.new_task_var.set("")
+        self.load_local_tasks()
+
+    def toggle_task_status(self, task_id):
+        """Toggles the status of a task between 'needsAction' and 'completed'."""
+        current_status = self.send_db_command('get_task_status', (task_id,), expect_result=True)
+        new_status = 'completed' if current_status == 'needsAction' else 'needsAction'
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        self.send_db_command('update_task_status', (task_id, new_status, timestamp), expect_result=False)
+        self.load_local_tasks()
+
+    def toggle_task_starred(self, task_id):
+        """Toggles the starred status of a task."""
+        current_starred_val = self.send_db_command('get_task_starred', (task_id,), expect_result=True)
+        new_starred_val = 0 if current_starred_val == 1 else 1
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        self.send_db_command('update_task_starred', (task_id, new_starred_val, timestamp), expect_result=False)
+        self.load_local_tasks()
+        
+    def sync_google_tasks_placeholder(self):
+        """Placeholder for Google Tasks sync functionality."""
+        ttk.dialogs.Messagebox.show_info("Sync with Google Tasks is not yet implemented.", "Coming Soon!")
+
     def show_history(self):
         if self.history_window and tk.Toplevel.winfo_exists(self.history_window):
             self.history_window.lift()
@@ -1581,11 +1702,12 @@ class Database:
             self.cursor = None
 
     def create_tables(self):
-        """Creates both sessions, categories, and settings tables."""
+        """Creates all necessary tables for the application."""
         if not self.conn:
             logging.error("Cannot create tables: No database connection.")
             return
 
+        # Sessions Table
         self.cursor.execute(
             """
                 CREATE TABLE IF NOT EXISTS sessions(
@@ -1599,6 +1721,7 @@ class Database:
         )
         logging.info("Sessions table checked/created.")
 
+        # Categories Table
         self.cursor.execute(
             """
                 CREATE TABLE IF NOT EXISTS categories(
@@ -1607,9 +1730,9 @@ class Database:
                 )
             """
         )
-        self.conn.commit()
         logging.info("Categories table checked/created.")
 
+        # Settings Table
         self.cursor.execute(
             """
                 CREATE TABLE IF NOT EXISTS settings(
@@ -1618,9 +1741,26 @@ class Database:
                 )
             """
         )
-        self.conn.commit()
         logging.info("Settings table checked/created.")
+        
+        # Tasks Table
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                status TEXT DEFAULT 'needsAction',
+                starred INTEGER DEFAULT 0,
+                google_task_id TEXT,
+                last_modified TEXT NOT NULL
+            )
+            """
+        )
+        logging.info("Tasks table checked/created.")
 
+        self.conn.commit()
+
+        # Populate default categories if table is empty
         self.cursor.execute("SELECT COUNT(*) FROM categories")
         if self.cursor.fetchone()[0] == 0:
             default_categories = ["Work", "Skill", "School"]
@@ -1828,6 +1968,61 @@ class Database:
         except Exception as e:
             logging.error(f"Error setting setting '{key}': {e}")
             return False
+        
+    def get_tasks(self):
+        """Gets all tasks from the database."""
+        try:
+            self.cursor.execute("SELECT id, title, status, starred, google_task_id, last_modified FROM tasks")
+            return self.cursor.fetchall()
+        except Exception as e:
+            logging.error(f"Error getting tasks: {e}")
+            return []
+
+    def insert_task(self, title, last_modified):
+        """Inserts a new task into the database."""
+        try:
+            self.cursor.execute("""
+                INSERT INTO tasks (title, last_modified) VALUES (?,?)
+                """, (title, last_modified))
+            self.conn.commit()
+            return self.cursor.lastrowid
+        except Exception as e:
+            logging.error(f"Error inserting task: {e}")
+            return None
+
+    def get_task_status(self, task_id):
+        """Gets the status of a single task."""
+        try:
+            self.cursor.execute("SELECT status FROM tasks WHERE id = ?", (task_id,))
+            return self.cursor.fetchone()[0]
+        except Exception as e:
+            logging.error(f"Error getting task status for ID {task_id}: {e}")
+            return None
+
+    def get_task_starred(self, task_id):
+        """Gets the starred value of a single task."""
+        try:
+            self.cursor.execute("SELECT starred FROM tasks WHERE id = ?", (task_id,))
+            return self.cursor.fetchone()[0]
+        except Exception as e:
+            logging.error(f"Error getting starred status for ID {task_id}: {e}")
+            return None
+
+    def update_task_status(self, task_id, status, last_modified):
+        """Updates the status of a task."""
+        try:
+            self.cursor.execute("UPDATE tasks SET status = ?, last_modified = ? WHERE id = ?", (status, last_modified, task_id))
+            self.conn.commit()
+        except Exception as e:
+            logging.error(f"Error updating task status for ID {task_id}: {e}")
+            
+    def update_task_starred(self, task_id, starred, last_modified):
+        """Updates the starred status of a task."""
+        try:
+            self.cursor.execute("UPDATE tasks SET starred = ?, last_modified = ? WHERE id = ?", (starred, last_modified, task_id))
+            self.conn.commit()
+        except Exception as e:
+            logging.error(f"Error updating task starred status for ID {task_id}: {e}")        
 
     def close(self):
         """Closes the database connection."""

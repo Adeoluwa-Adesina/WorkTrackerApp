@@ -23,3 +23,14 @@ main.spec      # PyInstaller spec file (can be regenerated)
 *.app          # macOS application bundles (if you build with PyInstaller)
 dist/          # PyInstaller distribution folder
 build/         # PyInstaller build folder
+
+
+
+# Configuration files
+config.json
+
+# Credential files
+credentials.json
+
+# Vercel configuration file (often specific to deployment settings)
+vercel.json

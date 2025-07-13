@@ -474,3 +474,104 @@ Traceback (most recent call last):
     raise mapped_exc(message) from exc
 httpx.ConnectError: [Errno 54] Connection reset by peer
 2025-07-12 20:09:58,937 - ERROR - Failed to send heartbeat to cloud.
+2025-07-12 23:52:19,926 - ERROR - Error sending data to Supabase table 'online_status': _ssl.c:1011: The handshake operation timed out
+Traceback (most recent call last):
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_sync/connection.py", line 101, in handle_request
+    raise exc
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_sync/connection.py", line 78, in handle_request
+    stream = self._connect(request)
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_sync/connection.py", line 156, in _connect
+    stream = stream.start_tls(**kwargs)
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_backends/sync.py", line 154, in start_tls
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectTimeout: _ssl.c:1011: The handshake operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/main.py", line 297, in _send_supabase_data
+    response = self.supabase_client.table(table_name).upsert(data).execute()
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 57, in execute
+    r = self.session.request(
+        self.http_method,
+    ...<3 lines>...
+        headers=self.headers,
+    )
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectTimeout: _ssl.c:1011: The handshake operation timed out
+2025-07-12 23:52:19,942 - ERROR - Failed to send heartbeat to cloud.
+2025-07-13 00:10:28,850 - ERROR - Error initializing Supabase client: 'dict' object has no attribute 'headers'
+Traceback (most recent call last):
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/main.py", line 278, in _initialize_supabase_client
+    self.supabase_client: Client = create_client(
+                                   ~~~~~~~~~~~~~^
+        supabase_url,
+        ^^^^^^^^^^^^^
+        supabase_key,
+        ^^^^^^^^^^^^^
+        options={"httpx_client": httpx.Client(timeout=timeout)}
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 369, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 100, in create
+    auth_header = options.headers.get("Authorization") if options else None
+                  ^^^^^^^^^^^^^^^
+AttributeError: 'dict' object has no attribute 'headers'
+2025-07-13 00:10:33,633 - WARNING - Supabase client or user ID not ready for heartbeat. Skipping this cycle.
+2025-07-13 00:11:03,634 - WARNING - Supabase client or user ID not ready for heartbeat. Skipping this cycle.
+2025-07-13 00:11:33,637 - WARNING - Supabase client or user ID not ready for heartbeat. Skipping this cycle.
+2025-07-13 00:31:43,657 - ERROR - Error initializing Supabase client: SyncClientOptions.__init__() got an unexpected keyword argument 'timeout'
+Traceback (most recent call last):
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/main.py", line 275, in _initialize_supabase_client
+    options = ClientOptions(timeout=30)
+TypeError: SyncClientOptions.__init__() got an unexpected keyword argument 'timeout'
+2025-07-13 00:31:48,506 - WARNING - Supabase client or user ID not ready for heartbeat. Skipping this cycle.
