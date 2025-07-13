@@ -1279,16 +1279,37 @@ class WorkTracker:
             logging.error(f"An unexpected error occurred during sync: {e}", exc_info=True)
             ttk.dialogs.Messagebox.show_error(f"An unexpected error occurred during sync: {e}", "Sync Error")
 
+            
+    def execute_google_api_call(self, api_call, max_retries=3, initial_backoff=1):
+        """Executes a Google API call with exponential backoff for server errors."""
+        for i in range(max_retries):
+            try:
+                return api_call.execute()
+            except HttpError as e:
+                # Only retry on 5xx server errors
+                if e.resp.status in [500, 503]:
+                    logging.warning(f"Google API server error ({e.resp.status}). Retrying in {initial_backoff}s... (Attempt {i+1}/{max_retries})")
+                    time.sleep(initial_backoff)
+                    initial_backoff *= 2 # Exponentially increase backoff
+                else:
+                    # For other errors (like 404 Not Found), re-raise the exception
+                    raise e
+            except Exception as e:
+                # For non-HttpError exceptions, re-raise immediately
+                raise e
+        # If all retries fail
+        raise Exception(f"Google API call failed after {max_retries} retries.")
+
     def choose_task_list(self, service):
         """Fetches user's task lists and prompts them to choose one."""
         try:
-            tasklists_result = service.tasklists().list(maxResults=100).execute()
+            tasklists_result = self.execute_google_api_call(service.tasklists().list(maxResults=100))
             items = tasklists_result.get('items', [])
 
             if not items:
                 ttk.dialogs.Messagebox.show_info("No Google Task lists found. A new list 'WorkTracker' will be created.", "Task List")
                 new_list = {'title': 'WorkTracker'}
-                created_list = service.tasklists().insert(body=new_list).execute()
+                created_list = self.execute_google_api_call(service.tasklists().insert(body=new_list))
                 return created_list['id']
 
             list_names = [item['title'] for item in items]
@@ -1916,334 +1937,148 @@ class Database:
             self.cursor = None
 
     def create_tables(self):
-        """Creates all necessary tables for the application."""
+        """Creates all necessary tables and runs migrations if needed."""
         if not self.conn:
             logging.error("Cannot create tables: No database connection.")
             return
 
-        # Sessions Table
-        self.cursor.execute(
-            """
-                CREATE TABLE IF NOT EXISTS sessions(
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    start_time TEXT,
-                    end_time TEXT,
-                    category TEXT,
-                    notes TEXT
-                )
-            """
-        )
-        logging.info("Sessions table checked/created.")
-
-        # Categories Table
-        self.cursor.execute(
-            """
-                CREATE TABLE IF NOT EXISTS categories(
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT UNIQUE NOT NULL
-                )
-            """
-        )
-        logging.info("Categories table checked/created.")
-
-        # Settings Table
-        self.cursor.execute(
-            """
-                CREATE TABLE IF NOT EXISTS settings(
-                    key TEXT PRIMARY KEY,
-                    value TEXT
-                )
-            """
-        )
-        logging.info("Settings table checked/created.")
-        
-        # Tasks Table
-        self.cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS tasks (
+        # --- Schema Creation ---
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS sessions(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                status TEXT DEFAULT 'needsAction',
-                starred INTEGER DEFAULT 0,
-                google_task_id TEXT,
-                last_modified TEXT NOT NULL
-            )
-            """
-        )
-        logging.info("Tasks table checked/created.")
+                start_time TEXT, end_time TEXT, category TEXT, notes TEXT
+            )""")
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS categories(
+                id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL
+            )""")
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT)
+            """)
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL,
+                status TEXT DEFAULT 'needsAction', starred INTEGER DEFAULT 0,
+                google_task_id TEXT, last_modified TEXT NOT NULL
+            )""")
+        
+        # --- Migration for 'deleted' column in tasks table ---
+        try:
+            self.cursor.execute("SELECT deleted FROM tasks LIMIT 1")
+        except sqlite3.OperationalError:
+            logging.info("Older database schema detected. Adding 'deleted' column to tasks table.")
+            self.cursor.execute("ALTER TABLE tasks ADD COLUMN deleted INTEGER DEFAULT 0")
 
         self.conn.commit()
+        logging.info("All tables and migrations checked/created.")
 
-        # Populate default categories if table is empty
+        # --- Populate Default Categories ---
         self.cursor.execute("SELECT COUNT(*) FROM categories")
         if self.cursor.fetchone()[0] == 0:
             default_categories = ["Work", "Skill", "School"]
             for category in default_categories:
                 try:
                     self.cursor.execute("INSERT INTO categories (name) VALUES (?)", (category,))
-                    self.conn.commit()
-                    logging.info(f"Default category '{category}' added to categories table.")
                 except sqlite3.IntegrityError:
-                    logging.warning(f"Default category '{category}' already exists, skipping.")
-                except Exception as e:
-                    logging.error(f"Error adding default category '{category}': {e}")
-            logging.info("Default categories ensured in dedicated table.")
-
-
-    def insert_session(self, start_time, end_time, category, notes):
-        try:
-            # Convert to UTC before storing
-            start_time_str = start_time.astimezone(datetime.timezone.utc).isoformat() if start_time else None
-            end_time_str = end_time.astimezone(datetime.timezone.utc).isoformat() if end_time else None
-
-            self.cursor.execute("""
-                INSERT INTO sessions (start_time, end_time, category, notes) VALUES (?,?,?,?)
-                """, (start_time_str, end_time_str, category, notes))
+                    pass
             self.conn.commit()
-            last_id = self.cursor.lastrowid
-            logging.info(f"Session inserted. ID: {last_id}")
-            return last_id
-        except Exception as e:
-            logging.error(f"Error inserting session into DB: {e}", exc_info=True)
-            return None
+            logging.info("Default categories populated.")
 
-    def update_session(self, session_id, end_time, notes):
+    def execute_query(self, query, params=(), fetch=None):
+        """A generic method to execute database queries."""
         try:
-            # Convert to UTC before storing
-            end_time_str = end_time.astimezone(datetime.timezone.utc).isoformat() if end_time else None
-
-            self.cursor.execute("""
-                UPDATE sessions
-                SET end_time = ?, notes = ?
-                WHERE id = ?
-            """, (end_time_str, notes, session_id))
-            self.conn.commit()
-            logging.info(f"Session updated. ID: {session_id}")
-        except Exception as e:
-            logging.error(f"Error updating session: {e}")
-            return False
-
-    def update_full_session(self, session_id, start_time, end_time, category, notes):
-        """Updates all fields of a session in the database."""
-        try:
-            # Convert to UTC before storing
-            start_time_str = start_time.astimezone(datetime.timezone.utc).isoformat() if start_time else None
-            end_time_str = end_time.astimezone(datetime.timezone.utc).isoformat() if end_time else None
-
-            self.cursor.execute("""
-                UPDATE sessions
-                SET start_time = ?, end_time = ?, category = ?, notes = ?
-                WHERE id = ?
-            """, (start_time_str, end_time_str, category, notes, session_id))
-            self.conn.commit()
-            logging.info(f"Full session updated. ID: {session_id}")
-            return True
-        except Exception as e:
-            logging.error(f"Error updating full session: {e}")
-            return False
-
-    def get_session_by_id(self, session_id):
-        """Gets a single session by its ID."""
-        try:
-            self.cursor.execute("SELECT id, start_time, end_time, category, notes FROM sessions WHERE id = ?", (session_id,))
-            session = self.cursor.fetchone()
-            logging.info(f"Session {session_id} retrieved.")
-            return session
-        except Exception as e:
-            logging.error(f"Error getting session by ID {session_id}: {e}")
-            return None
-
-    def get_sessions(self):
-        """Gets all sessions from database."""
-        try:
-            self.cursor.execute("SELECT id, start_time, end_time, category, notes FROM sessions")
-            sessions = self.cursor.fetchall()
-            logging.info("Sessions retrieved")
-            return sessions
-        except Exception as e:
-            logging.error(f"Error getting sessions: {e}")
-            return []
-
-    def get_filtered_sessions(self, start_date=None, end_date=None, category=None, search_text=None):
-        """Gets sessions from database based on filters."""
-        try:
-            query = "SELECT id, start_time, end_time, category, notes FROM sessions WHERE 1=1"
-            params = []
-
-            if start_date:
-                # Ensure start_date is timezone-aware before converting to ISO for query
-                if start_date.tzinfo is None:
-                    start_date = start_date.astimezone(datetime.timezone.utc)
-                query += " AND start_time >= ?"
-                params.append(start_date.isoformat())
-            if end_date:
-                # Ensure end_date is timezone-aware before converting to ISO for query
-                if end_date.tzinfo is None:
-                    end_date = end_date.astimezone(datetime.timezone.utc)
-                query += " AND start_time <= ?"
-                if end_date.hour == 0 and end_date.minute == 0 and end_date.second == 0:
-                    end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-                params.append(end_date.isoformat())
-
-            if category and category != "All":
-                if category == "Uncategorized":
-                    query += " AND category IS NULL"
-                else:
-                    query += " AND category = ?"
-                    params.append(category)
-
-            if search_text:
-                search_pattern = f"%{search_text}%"
-                query += " AND (notes LIKE ? OR category LIKE ?)"
-                params.append(search_pattern)
-                params.append(search_pattern)
-
-            query += " ORDER BY start_time DESC"
-
-            self.cursor.execute(query, tuple(params))
-            sessions = self.cursor.fetchall()
-            logging.info(f"Filtered sessions retrieved. Query: {query}, Params: {params}")
-            return sessions
-        except Exception as e:
-            logging.error(f"Error getting filtered sessions: {e}")
-            return []
-
-    def get_all_categories(self):
-        """Gets all category names from the dedicated categories table."""
-        try:
-            self.cursor.execute("SELECT name FROM categories ORDER BY name")
-            categories = [row[0] for row in self.cursor.fetchall()]
-            logging.info("All categories retrieved from dedicated table.")
-            return categories
-        except Exception as e:
-            logging.error(f"Error getting all categories: {e}")
-            return []
-
-    def insert_category(self, category_name):
-        """Inserts a new category into the dedicated categories table."""
-        try:
-            self.cursor.execute("INSERT INTO categories (name) VALUES (?)", (category_name,))
-            self.conn.commit()
-            logging.info(f"Category '{category_name}' inserted into dedicated table.")
-            return True
-        except sqlite3.IntegrityError:
-            logging.warning(f"Category '{category_name}' already exists in dedicated table.")
-            return False
-        except Exception as e:
-            logging.error(f"Error inserting category '{category_name}': {e}")
-            return False
-
-    def rename_category(self, old_category, new_category):
-        """Renames a category in the categories table and updates associated sessions."""
-        try:
-            self.cursor.execute("SELECT 1 FROM categories WHERE name = ? LIMIT 1", (new_category,))
-            if self.cursor.fetchone():
-                logging.warning(f"Cannot rename '{old_category}' to '{new_category}': New category name already exists.")
-                return False
-
-            self.cursor.execute("UPDATE categories SET name = ? WHERE name = ?", (new_category, old_category))
-            self.cursor.execute("UPDATE sessions SET category = ? WHERE category = ?", (new_category, old_category))
-            self.conn.commit()
-            logging.info(f"Category '{old_category}' renamed to '{new_category}' and sessions updated.")
-            return True
-        except Exception as e:
-            logging.error(f"Error renaming category: {e}")
-            return False
-
-    def delete_category_from_db(self, category_name):
-        """Deletes a category from the categories table and updates associated sessions."""
-        try:
-            self.cursor.execute("UPDATE sessions SET category = NULL WHERE category = ?", (category_name,))
-            self.cursor.execute("DELETE FROM categories WHERE name = ?", (category_name,))
-            self.conn.commit()
-            logging.info(f"Category '{category_name}' deleted from categories table and sessions updated.")
-            return True
-        except Exception as e:
-            logging.error(f"Error deleting category '{category_name}': {e}")
-            return False
-
-    def get_setting(self, key):
-        """Retrieves a setting value by its key."""
-        try:
-            self.cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
-            result = self.cursor.fetchone()
-            return result[0] if result else None
-        except Exception as e:
-            logging.error(f"Error getting setting '{key}': {e}")
-            return None
-
-    def set_setting(self, key, value):
-        """Inserts or updates a setting key-value pair."""
-        try:
-            self.cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
-            self.conn.commit()
-            logging.info(f"Setting '{key}' set to '{value}'.")
-            return True
-        except Exception as e:
-            logging.error(f"Error setting setting '{key}': {e}")
-            return False
-        
-    def get_tasks(self):
-        """Gets all tasks from the database."""
-        try:
-            self.cursor.execute("SELECT id, title, status, starred, google_task_id, last_modified FROM tasks")
-            return self.cursor.fetchall()
-        except Exception as e:
-            logging.error(f"Error getting tasks: {e}")
-            return []
-
-    def insert_task(self, title, last_modified):
-        """Inserts a new task into the database."""
-        try:
-            self.cursor.execute("""
-                INSERT INTO tasks (title, last_modified) VALUES (?,?)
-                """, (title, last_modified))
+            self.cursor.execute(query, params)
+            if fetch == 'one':
+                return self.cursor.fetchone()
+            if fetch == 'all':
+                return self.cursor.fetchall()
             self.conn.commit()
             return self.cursor.lastrowid
         except Exception as e:
-            logging.error(f"Error inserting task: {e}")
+            logging.error(f"Database query failed: {query} with params {params}. Error: {e}")
             return None
+
+    def get_tasks(self, include_deleted=False):
+        """Gets all tasks from the database."""
+        query = "SELECT id, title, status, starred, google_task_id, last_modified FROM tasks"
+        if not include_deleted:
+            query += " WHERE deleted = 0"
+        
+        tasks = self.execute_query(query, fetch='all')
+        return tasks if tasks is not None else [] # Return empty list on failure
+        
+    def get_deleted_task_ids(self):
+        return self.execute_query("SELECT google_task_id FROM tasks WHERE deleted = 1 AND google_task_id IS NOT NULL", fetch='all')
+
+    def insert_task(self, title, last_modified, google_task_id=None, status='needsAction'):
+        return self.execute_query("INSERT INTO tasks (title, last_modified, google_task_id, status) VALUES (?,?,?,?)", (title, last_modified, google_task_id, status))
+
+    def get_task_by_google_id(self, google_task_id):
+        return self.execute_query("SELECT * FROM tasks WHERE google_task_id = ?", (google_task_id,), fetch='one')
+
+    def update_task_with_google_id(self, local_id, google_task_id, last_modified):
+        self.execute_query("UPDATE tasks SET google_task_id = ?, last_modified = ? WHERE id = ?", (google_task_id, last_modified, local_id))
+
+    def update_task(self, local_id, title, status, starred, last_modified):
+        self.execute_query("UPDATE tasks SET title = ?, status = ?, starred = ?, last_modified = ? WHERE id = ?", (title, status, starred, last_modified, local_id))
+
+    def mark_task_deleted(self, task_id):
+        self.execute_query("UPDATE tasks SET deleted = 1 WHERE id = ?", (task_id,))
+
+    def purge_deleted_task(self, google_task_id):
+        self.execute_query("DELETE FROM tasks WHERE google_task_id = ?", (google_task_id,))
 
     def get_task_status(self, task_id):
-        """Gets the status of a single task."""
-        try:
-            self.cursor.execute("SELECT status FROM tasks WHERE id = ?", (task_id,))
-            return self.cursor.fetchone()[0]
-        except Exception as e:
-            logging.error(f"Error getting task status for ID {task_id}: {e}")
-            return None
+        result = self.execute_query("SELECT status FROM tasks WHERE id = ?", (task_id,), fetch='one')
+        return result[0] if result else None
 
     def get_task_starred(self, task_id):
-        """Gets the starred value of a single task."""
-        try:
-            self.cursor.execute("SELECT starred FROM tasks WHERE id = ?", (task_id,))
-            return self.cursor.fetchone()[0]
-        except Exception as e:
-            logging.error(f"Error getting starred status for ID {task_id}: {e}")
-            return None
+        result = self.execute_query("SELECT starred FROM tasks WHERE id = ?", (task_id,), fetch='one')
+        return result[0] if result else None
 
     def update_task_status(self, task_id, status, last_modified):
-        """Updates the status of a task."""
-        try:
-            self.cursor.execute("UPDATE tasks SET status = ?, last_modified = ? WHERE id = ?", (status, last_modified, task_id))
-            self.conn.commit()
-        except Exception as e:
-            logging.error(f"Error updating task status for ID {task_id}: {e}")
-            
+        self.execute_query("UPDATE tasks SET status = ?, last_modified = ? WHERE id = ?", (status, last_modified, task_id))
+
     def update_task_starred(self, task_id, starred, last_modified):
-        """Updates the starred status of a task."""
+        self.execute_query("UPDATE tasks SET starred = ?, last_modified = ? WHERE id = ?", (starred, last_modified, task_id))
+        
+    def insert_session(self, start_time, end_time, category, notes):
+        start_time_str = start_time.astimezone(datetime.timezone.utc).isoformat() if start_time else None
+        end_time_str = end_time.astimezone(datetime.timezone.utc).isoformat() if end_time else None
+        return self.execute_query("INSERT INTO sessions (start_time, end_time, category, notes) VALUES (?,?,?,?)", (start_time_str, end_time_str, category, notes))
+
+    def update_session(self, session_id, end_time, notes):
+        end_time_str = end_time.astimezone(datetime.timezone.utc).isoformat() if end_time else None
+        self.execute_query("UPDATE sessions SET end_time = ?, notes = ? WHERE id = ?", (end_time_str, notes, session_id))
+
+    def get_all_categories(self):
+        return [row[0] for row in self.execute_query("SELECT name FROM categories ORDER BY name", fetch='all')]
+
+    def insert_category(self, category_name):
         try:
-            self.cursor.execute("UPDATE tasks SET starred = ?, last_modified = ? WHERE id = ?", (starred, last_modified, task_id))
-            self.conn.commit()
-        except Exception as e:
-            logging.error(f"Error updating task starred status for ID {task_id}: {e}")        
+            self.execute_query("INSERT INTO categories (name) VALUES (?)", (category_name,))
+            return True
+        except sqlite3.IntegrityError:
+            return False
 
-    def close(self):
-        """Closes the database connection."""
-        if self.conn:
-            self.conn.close()
-            logging.info("Database connection closed.")
+    def rename_category(self, old, new):
+        self.execute_query("UPDATE sessions SET category = ? WHERE category = ?", (new, old))
+        self.execute_query("UPDATE categories SET name = ? WHERE name = ?", (new, old))
+        return True
 
+    def delete_category_from_db(self, name):
+        self.execute_query("UPDATE sessions SET category = NULL WHERE category = ?", (name,))
+        self.execute_query("DELETE FROM categories WHERE name = ?", (name,))
+        return True
+        
+    def get_setting(self, key):
+        result = self.execute_query("SELECT value FROM settings WHERE key = ?", (key,), fetch='one')
+        return result[0] if result else None
+        
+    def set_setting(self, key, value):
+        self.execute_query("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
+        return True
+    
 
 if __name__ == "__main__":
     root = ttk.Window(themename="vapor")

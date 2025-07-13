@@ -149,3 +149,5 @@ httpx.ConnectTimeout: [Errno 60] Operation timed out
 2025-07-13 19:00:39,932 - ERROR - Database operation 'insert_task' failed: Database.insert_task() takes 3 positional arguments but 5 were given
 2025-07-13 19:00:39,932 - ERROR - Database operation 'insert_task' failed: Database.insert_task() takes 3 positional arguments but 5 were given
 2025-07-13 19:00:39,932 - ERROR - Database operation 'insert_task' failed: Database.insert_task() takes 3 positional arguments but 5 were given
+2025-07-13 19:23:54,929 - ERROR - Database query failed: SELECT id, title, status, starred, google_task_id, last_modified FROM tasks WHERE deleted = 0 with params (). Error: no such column: deleted
+2025-07-13 19:44:18,376 - ERROR - Failed to create new task on Google: <HttpError 503 when requesting https://tasks.googleapis.com/tasks/v1/lists/MTQwMDg5NzA2MTg5NDM5MDkzMDQ6MDow/tasks?alt=json returned "The service is currently unavailable.". Details: "[{'message': 'The service is currently unavailable.', 'domain': 'global', 'reason': 'backendError'}]">
