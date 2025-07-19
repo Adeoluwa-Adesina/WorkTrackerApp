@@ -1,5 +1,9 @@
 import tkinter as tk
-from tkinter import font as tkfont # Import the font module
+import ttkbootstrap as ttk
+from tkinter import simpledialog, font as tkfont # Import the font module
+from tkinter import ttk, messagebox, simpledialog, filedialog, font as tkfont
+from ttkbootstrap.constants import *
+from ttkbootstrap import dialogs
 import datetime
 import time
 import sqlite3
@@ -19,6 +23,7 @@ import httpx # Import httpx to configure timeouts
 import appdirs
 import pytz
 from dateutil.parser import parse as date_parse 
+
 
 # --- Google API Imports ---
 try:
@@ -760,18 +765,18 @@ class WorkTracker:
     def sync_daily_stats_to_cloud(self):
         """Calculates daily stats and uploads them to Supabase."""
         if not SUPABASE_AVAILABLE:
-            ttk.dialogs.Messagebox.show_warning("Supabase library not available. Cannot sync stats.", "Cloud Sync")
+            dialogs.Messagebox.show_warning("Supabase library not available. Cannot sync stats.", "Cloud Sync")
             return
         if not self.supabase_client:
-            ttk.dialogs.Messagebox.show_warning("Supabase client not initialized. Check logs for API key errors.", "Cloud Sync")
+            dialogs.Messagebox.show_warning("Supabase client not initialized. Check logs for API key errors.", "Cloud Sync")
             return
         if not self.supabase_user_id:
-             ttk.dialogs.Messagebox.show_warning("Local user ID for Supabase not generated. Try restarting the app or check logs.", "Cloud Sync")
-             return
+            dialogs.Messagebox.show_warning("Local user ID for Supabase not generated. Try restarting the app or check logs.", "Cloud Sync")
+            return
 
         # Prompt for display name if it's still the default UUID-based one
         if not self.display_name or self.display_name.startswith("User-"):
-            response = ttk.dialogs.Messagebox.show_question("You don't have a custom display name set. Your stats will be uploaded as a generic user ID. It is highly recommended to set a custom display name for the leaderboard. Do you want to set one now?", "Display Name Recommended", buttons=["Yes", "No"])
+            response = dialogs.Messagebox.show_question("You don't have a custom display name set. Your stats will be uploaded as a generic user ID. It is highly recommended to set a custom display name for the leaderboard. Do you want to set one now?", "Display Name Recommended", buttons=["Yes", "No"])
             if response == "Yes":
                 self.open_display_name_settings()
                 # If name was successfully set and is no longer default, proceed with sync
@@ -783,32 +788,38 @@ class WorkTracker:
                 pass # User chose to proceed with generic ID
 
         # --- Define 'today' based on Lagos, Nigeria timezone (WAT, UTC+1) ---
-        lagos_tz = datetime.timezone(datetime.timedelta(hours=1), 'WAT')
+        # NOTE: Make sure self.time_zone is set to 'Africa/Lagos' or similar.
+        # It's better to use actual IANA timezones for robustness with pytz.
+        try:
+            lagos_tz = pytz.timezone('Africa/Lagos')
+        except pytz.UnknownTimeZoneError:
+            logging.error("Unknown timezone 'Africa/Lagos', defaulting to UTC+1 manually.")
+            lagos_tz = datetime.timezone(datetime.timedelta(hours=1), 'WAT')
+
         now_in_lagos = datetime.datetime.now(lagos_tz)
         today_in_lagos = now_in_lagos.date()
 
-        start_of_today_in_lagos = datetime.datetime(today_in_lagos.year, today_in_lagos.month, today_in_lagos.day, 0, 0, 0, 0, tzinfo=lagos_tz)
-        end_of_today_in_lagos = datetime.datetime(today_in_lagos.year, today_in_lagos.month, today_in_lagos.day, 23, 59, 59, 999999, tzinfo=lagos_tz)
+        # Define start and end of day in Lagos timezone
+        start_of_today_in_lagos = lagos_tz.localize(datetime.datetime(today_in_lagos.year, today_in_lagos.month, today_in_lagos.day, 0, 0, 0, 0))
+        end_of_today_in_lagos = lagos_tz.localize(datetime.datetime(today_in_lagos.year, today_in_lagos.month, today_in_lagos.day, 23, 59, 59, 999999))
 
-        # Convert to UTC for querying SQLite (if SQLite stores naive times, this might need adjustment)
-        # Assuming SQLite stores naive times as local times, we query based on local times.
-        # The conversion to UTC happens when saving to SQLite and sending to Supabase.
-        
-        # Get all sessions for today (based on Lagos time)
-        # Note: get_filtered_sessions expects naive datetimes if SQLite is naive, or timezone-aware if SQLite is timezone-aware.
-        # Since we're storing UTC in SQLite, we should query with UTC datetimes for consistency.
+
+        # Convert to UTC datetime objects for consistency before converting to string for query
         start_of_today_utc = start_of_today_in_lagos.astimezone(datetime.timezone.utc)
         end_of_today_utc = end_of_today_in_lagos.astimezone(datetime.timezone.utc)
 
+        # --- Convert to ISO formatted strings for get_filtered_sessions ---
+        start_of_today_iso = start_of_today_utc.isoformat()
+        end_of_today_iso = end_of_today_utc.isoformat()
 
         today_sessions = self.send_db_command(
             'get_filtered_sessions',
-            (start_of_today_utc, end_of_today_utc, "All", None), # Filter by date, ignore category/search
+            (start_of_today_iso, end_of_today_iso, "All", None), # Pass ISO strings
             expect_result=True
         )
 
         if not today_sessions:
-            ttk.dialogs.Messagebox.show_info("No sessions recorded today to sync.", "Cloud Sync")
+            dialogs.Messagebox.show_info("No sessions recorded today to sync.", "Cloud Sync")
             return
 
         # --- Calculate total duration for the day ---
@@ -816,55 +827,12 @@ class WorkTracker:
         longest_session_duration_minutes = 0.0
 
         for session in today_sessions:
-            # session: (id, start_time_str, end_time_str, category, notes)
+            # session: (id, start_time_str, end_time_str, category, notes, task_id)
             try:
-                # Parse stored UTC strings back to datetime objects
-                if DATEUTIL_AVAILABLE:
-                    start_dt = date_parse(session[1])
-                    end_dt = date_parse(session[2]) if session[2] else None
-                else:
-                    # Fallback to trying multiple specific formats
-                    parsed_start = False
-                    for fmt in ['%Y-%m-%d %H:%M:%S.%f%z', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%SZ']: # Added ISO formats
-                        try:
-                            # Handle potential timezone info in string
-                            if 'Z' in session[1] or '+' in session[1] or '-' == session[1][-3] or '-' == session[1][-6]: # Basic check for timezone info
-                                start_dt = datetime.datetime.fromisoformat(session[1])
-                            else:
-                                start_dt = datetime.datetime.strptime(session[1], fmt)
-                            # Ensure it's timezone-aware UTC if it was naive
-                            if start_dt.tzinfo is None:
-                                start_dt = start_dt.replace(tzinfo=datetime.timezone.utc)
-                            parsed_start = True
-                            break
-                        except ValueError:
-                            continue
-                    if not parsed_start:
-                        logging.error(f"Could not parse start_time: {session[1]}")
-                        continue # Skip this session
-
-                    parsed_end = False
-                    if session[2]:
-                        for fmt in ['%Y-%m-%d %H:%M:%S.%f%z', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%SZ']: # Added ISO formats
-                            try:
-                                if 'Z' in session[2] or '+' in session[2] or '-' == session[2][-3] or '-' == session[2][-6]:
-                                    end_dt = datetime.datetime.fromisoformat(session[2])
-                                else:
-                                    end_dt = datetime.datetime.strptime(session[2], fmt)
-                                if end_dt.tzinfo is None:
-                                    end_dt = end_dt.replace(tzinfo=datetime.timezone.utc)
-                                parsed_end = True
-                                break
-                            except ValueError:
-                                continue
-                    else:
-                        end_dt = None # Handle ongoing sessions
-                        parsed_end = True # Mark as parsed if no end_time
-
-                    if not parsed_end:
-                        logging.error(f"Could not parse end_time: {session[2]}")
-                        continue # Skip this session
-
+                # Parse stored UTC strings back to datetime objects using date_parse
+                start_dt = date_parse(session[1]).astimezone(datetime.timezone.utc) # Ensure UTC-aware
+                end_dt = date_parse(session[2]).astimezone(datetime.timezone.utc) if session[2] else None # Ensure UTC-aware
+                
                 # Ensure end_time exists for duration calculation
                 if end_dt:
                     duration = (end_dt - start_dt).total_seconds() / 60 # in minutes
@@ -888,10 +856,10 @@ class WorkTracker:
         success = self._send_supabase_data('leaderboard_stats', daily_stats_data)
 
         if success:
-            ttk.dialogs.Messagebox.show_info("Daily statistics synced to cloud successfully!", "Cloud Sync")
+            dialogs.Messagebox.show_info("Daily statistics synced to cloud successfully!", "Cloud Sync")
             logging.info(f"Synced daily stats for {self.display_name}: {daily_stats_data}")
         else:
-            ttk.dialogs.Messagebox.show_error("Failed to sync daily statistics to cloud. Check app.log.", "Cloud Sync Error")
+            dialogs.Messagebox.show_error("Failed to sync daily statistics to cloud. Check app.log.", "Cloud Sync Error")
             logging.error(f"Failed to sync daily stats for {self.display_name}")
 
 
@@ -903,7 +871,7 @@ class WorkTracker:
     def add_category(self):
         """Adds a new category"""
         try:
-            new_category = ttk.dialogs.dialogs.askstring("Add Category", "Enter new category name:")
+            new_category = simpledialog.askstring("Add Category", "Enter new category name:")
             if new_category and new_category.strip():
                 new_category = new_category.strip()
                 success = self.send_db_command('insert_category', (new_category,), expect_result=True)
@@ -2363,7 +2331,7 @@ class Database:
     def get_sessions(self, start_date=None, end_date=None):
         """
         Fetches all sessions, optionally filtered by date range.
-        Dates should be in 'YYYY-MM-DD' format.
+        Dates should be ISO 8601 formatted datetime strings (e.g., 'YYYY-MM-DDTHH:MM:SS.ffffff+00:00').
         """
         query = "SELECT id, start_time, end_time, category, notes, task_id FROM sessions"
         params = []
@@ -2374,7 +2342,7 @@ class Database:
             params.append(start_date)
         if end_date:
             conditions.append("start_time <= ?")
-            params.append(end_date + " 23:59:59.999999") # Include entire end day
+            params.append(end_date)
 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
@@ -2386,7 +2354,7 @@ class Database:
     def get_filtered_sessions(self, start_date=None, end_date=None, category=None, task_id=None):
         """
         Fetches sessions based on various filters.
-        Dates should be in 'YYYY-MM-DD' format.
+        Dates should be ISO 8601 formatted datetime strings (e.g., 'YYYY-MM-DDTHH:MM:SS.ffffff+00:00').
         """
         query = "SELECT id, start_time, end_time, category, notes, task_id FROM sessions"
         params = []
@@ -2395,13 +2363,20 @@ class Database:
         if start_date:
             conditions.append("start_time >= ?")
             params.append(start_date)
+        
         if end_date:
             conditions.append("start_time <= ?")
-            params.append(end_date + " 23:59:59.999999") # Include entire end day
-        if category:
+            params.append(end_date)
+            
+        # --- MODIFIED: Only add category condition if not "All" and not None ---
+        if category and category != "All" and category != "Uncategorized": # Include "Uncategorized" as a real category
             conditions.append("category = ?")
             params.append(category)
-        if task_id is not None: # Allow task_id to be 0 or None for filtering
+        elif category == "Uncategorized": # Explicitly filter for NULL categories
+            conditions.append("category IS NULL")
+            # No param needed for IS NULL
+            
+        if task_id is not None:
             conditions.append("task_id = ?")
             params.append(task_id)
 
@@ -2410,7 +2385,10 @@ class Database:
         
         query += " ORDER BY start_time DESC"
         
-        return self.execute_query(query, params, fetch='all')
+        logging.debug(f"DEBUG DB: Executing get_filtered_sessions query: {query} with params: {params}")
+        results = self.execute_query(query, params, fetch='all')
+        logging.debug(f"DEBUG DB: get_filtered_sessions returned {len(results) if results else 0} results.")
+        return results
     
 
 if __name__ == "__main__":
