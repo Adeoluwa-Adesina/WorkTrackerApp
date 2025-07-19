@@ -17,6 +17,8 @@ import urllib.parse # New import for URL encoding
 import sys
 import httpx # Import httpx to configure timeouts
 import appdirs
+import pytz
+from dateutil.parser import parse as date_parse 
 
 # --- Google API Imports ---
 try:
@@ -41,11 +43,15 @@ except ImportError:
     from tkinter import ttk, messagebox, simpledialog, filedialog
 
 
-# --- Battery Optimization: Logging Config ---
+
+# Define the log file path explicitly to be in the same directory as main.py
+log_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'work_tracker.log')
+
 logging.basicConfig(
-    filename='work_tracker.log',
-    level=logging.WARNING,  # Set to INFO or DEBUG if needed
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    filename=log_file_path, # Use the explicitly defined path
+    level=logging.DEBUG,    # <--- CHANGE THIS TO DEBUG
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filemode='w'            # <--- CHANGE THIS TO 'w' (write) temporarily for debugging
 )
  # Import sys to get executable path
 
@@ -152,6 +158,7 @@ class WorkTracker:
         self.current_session_id = None
         self.history_window = None
         self.statistics_window = None
+        self.completed_is_open = False 
 
 
         # Initialize local DB, then categories and Supabase
@@ -367,6 +374,7 @@ class WorkTracker:
         if kwargs is None:
             kwargs = {}
         result_queue = queue.Queue() if expect_result else None
+        logging.debug(f"DEBUG: send_db_command putting '{operation_name}' with args: {args}")
         self.db_queue.put((operation_name, args, kwargs, result_queue))
         if expect_result:
             return result_queue.get()
@@ -595,6 +603,137 @@ class WorkTracker:
         
         # Reschedule for 30 seconds later
         self.root.after(30000, self._schedule_heartbeat)
+
+    def setup_todo_list(self, parent_frame):
+        """Creates and configures the to-do list UI elements."""
+        todo_frame = ttk.Labelframe(parent_frame, text="To-Do List", padding=15)
+        todo_frame.pack(fill=BOTH, expand=True, pady=10, padx=5)
+
+        # --- Header with Sync Button ---
+        header_frame = ttk.Frame(todo_frame)
+        header_frame.pack(fill=X, pady=(0, 10))
+        
+        sync_button = ttk.Button(header_frame, text="Sync with Google", bootstyle="info-outline", command=self.sync_google_tasks)
+        sync_button.pack(side=RIGHT)
+
+        # --- Task List Display ---
+        self.task_list = ttk.Treeview(todo_frame, columns=("star", "task"), show="", bootstyle="primary")
+        self.task_list.pack(expand=True, fill=BOTH)
+        self.task_list.column("star", width=30, anchor='center')
+        self.task_list.column("task", width=450)
+
+        # --- Add New Task Entry ---
+        add_task_frame = ttk.Frame(todo_frame)
+        add_task_frame.pack(fill=X, pady=(10, 0))
+
+        self.new_task_var = tk.StringVar()
+        new_task_entry = ttk.Entry(add_task_frame, textvariable=self.new_task_var, bootstyle="info")
+        new_task_entry.pack(side=LEFT, expand=True, fill=X, padx=(0, 10))
+        new_task_entry.bind("<Return>", self.add_local_task)
+        
+        add_task_button = ttk.Button(add_task_frame, text="Add Task", command=self.add_local_task, bootstyle="success")
+        add_task_button.pack(side=LEFT)
+
+        # --- Bind events ---
+        self.task_list.bind("<Button-1>", self.handle_task_click)
+        self.task_list.bind("<Double-1>", self.delete_task_prompt)
+        
+        # --- Configure Tags for Styling ---
+        strikethrough_font = tkfont.Font(family="Helvetica", size=10, overstrike=True)
+        self.task_list.tag_configure('completed', foreground='gray', font=strikethrough_font)
+        self.task_list.tag_configure('completed_header', foreground='cyan')
+
+    def handle_task_click(self, event):
+        """Handles clicks within the task list to toggle status or starred."""
+        region = self.task_list.identify("region", event.x, event.y)
+        if not region:
+            return
+
+        item_id = self.task_list.identify_row(event.y)
+        if not item_id:
+            return
+
+        tags = self.task_list.item(item_id, "tags")
+        
+        if "completed_header" in tags:
+            self.completed_is_open = not self.completed_is_open
+            self.task_list.item(item_id, open=self.completed_is_open)
+            return
+
+        task_db_id = tags[0]
+        column = self.task_list.identify_column(event.x)
+
+        if column == "#1":
+            self.toggle_task_starred(task_db_id)
+        else:
+            self.toggle_task_status(task_db_id)
+
+    def delete_task_prompt(self, event):
+        item_id = self.task_list.identify_row(event.y)
+        if not item_id: return
+        
+        tags = self.task_list.item(item_id, "tags")
+        if "completed_header" in tags: return
+
+        task_db_id = tags[0]
+        task_title = self.task_list.item(item_id, "values")[1]
+        
+        response = ttk.dialogs.Messagebox.show_question(f"Are you sure you want to delete this task?\n\n'{task_title}'", "Confirm Delete", buttons=["Yes", "No"])
+        if response == "Yes":
+            self.send_db_command('mark_task_deleted', (task_db_id,))
+            self.load_local_tasks()
+
+    def load_local_tasks(self):
+        """Loads tasks from the local database and populates the to-do list UI."""
+        for item in self.task_list.get_children():
+            self.task_list.delete(item)
+
+        tasks = self.send_db_command('get_tasks', expect_result=True)
+        if tasks is None: tasks = []
+
+        active_tasks = [t for t in tasks if t[2] == 'needsAction']
+        completed_tasks = [t for t in tasks if t[2] == 'completed']
+
+        active_tasks.sort(key=lambda x: (not x[3], x[5]), reverse=True)
+        for task in active_tasks:
+            task_id, title, _, starred, _, _ = task
+            star_icon = "★" if starred else "☆"
+            self.task_list.insert("", "end", iid=f"task_{task_id}", values=(star_icon, title), tags=(task_id,))
+
+        if completed_tasks:
+            header_text = f"Completed ({len(completed_tasks)})"
+            header_id = self.task_list.insert("", "end", values=("", header_text), tags=('completed_header',))
+            self.task_list.item(header_id, open=getattr(self, 'completed_is_open', False))
+
+            for task in completed_tasks:
+                task_id, title, _, starred, _, _ = task
+                star_icon = "★" if starred else "☆"
+                item = self.task_list.insert(header_id, "end", iid=f"task_{task_id}", values=(star_icon, title), tags=(task_id, 'completed'))
+
+    def add_local_task(self, event=None):
+        """Adds a new task to the local database and updates the UI."""
+        title = self.new_task_var.get().strip()
+        if not title: return
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        self.send_db_command('insert_task', (title, timestamp), expect_result=False)
+        self.new_task_var.set("")
+        self.load_local_tasks()
+
+    def toggle_task_status(self, task_id):
+        """Toggles the status of a task between 'needsAction' and 'completed'."""
+        current_status = self.send_db_command('get_task_status', (task_id,), expect_result=True)
+        new_status = 'completed' if current_status == 'needsAction' else 'needsAction'
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        self.send_db_command('update_task_status', (task_id, new_status, timestamp), expect_result=False)
+        self.load_local_tasks()
+
+    def toggle_task_starred(self, task_id):
+        """Toggles the starred status of a task."""
+        current_starred_val = self.send_db_command('get_task_starred', (task_id,), expect_result=True)
+        new_starred_val = 0 if current_starred_val == 1 else 1
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        self.send_db_command('update_task_starred', (task_id, new_starred_val, timestamp), expect_result=False)
+        self.load_local_tasks()
 
     def send_heartbeat_to_cloud(self):
         """Sends a heartbeat to the Supabase online_status table."""
@@ -995,8 +1134,8 @@ class WorkTracker:
 
     def start_session(self):
         try:
-            if self.category_var.get() == "No Categories":
-                ttk.dialogs.Messagebox.show_warning("Please add a category before starting a session.", "Warning")
+            if self.category_var.get() == "No Categories" or not self.category_var.get(): # Added check for empty string
+                ttk.dialogs.Messagebox.show_warning("Please add or select a category before starting a session.", "Warning")
                 return
 
             self.start_time = datetime.datetime.now()
@@ -1011,12 +1150,39 @@ class WorkTracker:
 
             self.stopwatch_running = True
             self.update_stopwatch()
+            
             category = self.category_var.get()
-            task = self.task_text.get("1.0", tk.END).strip()
-            logging.info(f"Attempting to start session with category: {category}, task: {task}")
+            task_notes = self.task_text.get("1.0", tk.END).strip() # Renamed from 'task' to 'task_notes' for clarity
 
+            # --- Determine the task_id from the selected To-Do List item ---
+            selected_item_id = self.task_list.focus() # Get the IID of the selected item in the Treeview
+            current_task_id = None
+            if selected_item_id:
+                item_tags = self.task_list.item(selected_item_id, "tags")
+                # The tags should contain the local database task_id.
+                # Ensure it's not the 'completed_header' tag.
+                if item_tags and item_tags[0] and not item_tags[0] == 'completed_header':
+                    try:
+                        # Explicitly cast to int as the database column is INTEGER
+                        # The tag is stored as a string, so conversion is necessary.
+                        current_task_id = int(item_tags[0])
+                        logging.info(f"Attempting to associate session with task ID: {current_task_id}")
+                    except ValueError:
+                        logging.warning(f"Could not convert task tag '{item_tags[0]}' to integer. Using None for task_id.")
+                        current_task_id = None
+                else:
+                    logging.info("No specific task selected from To-Do list (or header selected), using None for task_id.")
+            else:
+                logging.info("No task selected from To-Do list, using None for task_id.")
+
+            logging.info(f"Attempting to start session with category: {category}, task notes: {task_notes[:50]}..., associated task ID: {current_task_id}")
+
+            # Correctly pass task_id as the 5th argument
             self.current_session_id = self.send_db_command(
-                'insert_session', (self.start_time, None, category, task), expect_result=True)
+                'insert_session',
+                (self.start_time, None, category, task_notes, current_task_id), # <-- task_id added here
+                expect_result=True
+            )
 
             if self.current_session_id is None:
                 logging.error("Failed to get session ID from database. Database insertion likely failed.")
@@ -1042,34 +1208,68 @@ class WorkTracker:
 
     def stop_session(self):
         try:
+            print("Trying to stop session")
             if self.current_session_id is None:
-                logging.warning("Attempted to stop session when no session was running.")
+                print("current_session_id is None")
+                logging.warning("Attempted to stop session when no session was running (current_session_id is None).")
+                # Also ensure UI is reset if we somehow got into this state
+                self.stopwatch_running = False
+                self.is_running = False
+                self.start_button.config(state=tk.NORMAL)
+                self.pause_button.config(state=tk.DISABLED)
+                self.stop_button.config(state=tk.DISABLED)
                 return
 
+            print("updating variables")
             self.end_time = datetime.datetime.now()
             self.is_running = False
             self.is_paused = False
             self.pause_start_time = None
+            self.stopwatch_running = False
+            
+            # Get the notes for the session from the task text box
+            session_notes = self.task_text.get("1.0", tk.END).strip()
+
+            # --- NEW LOGGING ADDED HERE ---
+            logging.info(f"Preparing to update session:")
+            logging.info(f"  Session ID: {self.current_session_id}")
+            logging.info(f"  End Time: {self.end_time.isoformat()}")
+            logging.info(f"  Notes: '{session_notes[:100]}...' (truncated for log)") # Log first 100 chars
+            # --- END NEW LOGGING ---
+
+            # Call update_session with session_id, end_time, and notes
+            self.send_db_command(
+                'update_session', 
+                (self.current_session_id, self.end_time, session_notes), 
+                expect_result=False
+            )
+
+            # UI updates
             self.start_button.config(state=tk.NORMAL)
             self.pause_button.config(state=tk.DISABLED)
             self.stop_button.config(state=tk.DISABLED)
-            self.stopwatch_running = False
-            task = self.task_text.get("1.0", tk.END).strip()
-
-            self.send_db_command(
-                'update_session', (self.current_session_id, self.end_time, task), expect_result=False)
-
             self.task_text.delete("1.0", tk.END)
-            self.display_session_duration()
-            self.current_session_id = None
-            logging.info("Session stopped")
+            self.display_session_duration() # This method likely re-queries or updates display
+            
+            # IMPORTANT: Reset current_session_id *after* the DB command has been sent
+            self.current_session_id = None 
+            logging.info("Session stop command sent and UI reset.")
 
             if self.tray_icon and self.base_tray_image:
                 self.tray_icon.icon = self.base_tray_image
 
         except Exception as e:
-            logging.error(f"Error stopping session: {e}")
-            ttk.dialogs.Messagebox.show_error(f"An error occurred while stopping the session: {e}", "Error")
+            logging.error(f"Error stopping session: {e}", exc_info=True) # Added exc_info for full traceback
+            ttk.dialogs.Messagebox.show_error(f"An error occurred while stopping the session: {e}. Check app.log for details.", "Error")
+            # Ensure UI state is reset even on error
+            self.stopwatch_running = False
+            self.is_running = False
+            self.start_button.config(state=tk.NORMAL)
+            self.pause_button.config(state=tk.DISABLED)
+            self.stop_button.config(state=tk.DISABLED)
+            logging.info("Buttons state reverted due to unexpected error during session stop.")
+
+
 
     def display_session_duration(self):
         try:
@@ -1082,112 +1282,6 @@ class WorkTracker:
         except Exception as e:
             logging.error(f"Error displaying session duration: {e}")
 
-    def setup_todo_list(self, parent_frame):
-        """Creates and configures the to-do list UI elements."""
-        todo_frame = ttk.Labelframe(parent_frame, text="To-Do List", padding=15)
-        todo_frame.pack(fill=BOTH, expand=True, pady=10, padx=5)
-
-        # --- Header with Sync Button ---
-        header_frame = ttk.Frame(todo_frame)
-        header_frame.pack(fill=X, pady=(0, 10))
-        
-        sync_button = ttk.Button(header_frame, text="Sync with Google", bootstyle="info-outline", command=self.sync_google_tasks)
-        sync_button.pack(side=RIGHT)
-
-        # --- Task List Display ---
-        self.task_list = ttk.Treeview(todo_frame, columns=("star", "task"), show="", bootstyle="primary")
-        self.task_list.pack(expand=True, fill=BOTH)
-        self.task_list.column("star", width=30, anchor='center')
-        self.task_list.column("task", width=450)
-
-        # --- Add New Task Entry ---
-        add_task_frame = ttk.Frame(todo_frame)
-        add_task_frame.pack(fill=X, pady=(10, 0))
-
-        self.new_task_var = tk.StringVar()
-        new_task_entry = ttk.Entry(add_task_frame, textvariable=self.new_task_var, bootstyle="info")
-        new_task_entry.pack(side=LEFT, expand=True, fill=X, padx=(0, 10))
-        new_task_entry.bind("<Return>", self.add_local_task)
-        
-        add_task_button = ttk.Button(add_task_frame, text="Add Task", command=self.add_local_task, bootstyle="success")
-        add_task_button.pack(side=LEFT)
-
-        # --- Bind events ---
-        self.task_list.bind("<Button-1>", self.handle_task_click)
-        
-        # --- Configure Tags for Styling ---
-        strikethrough_font = tkfont.Font(family="Helvetica", size=10, overstrike=True)
-        self.task_list.tag_configure('completed', foreground='gray', font=strikethrough_font)
-
-
-    def handle_task_click(self, event):
-        """Handles clicks within the task list to toggle status or starred."""
-        region = self.task_list.identify("region", event.x, event.y)
-        if not region:
-            return
-
-        column = self.task_list.identify_column(event.x)
-        item_id = self.task_list.identify_row(event.y)
-
-        if not item_id:
-            return
-
-        task_db_id = self.task_list.item(item_id, "tags")[0]
-
-        if column == "#1":  # Star column
-            self.toggle_task_starred(task_db_id)
-        else: # Task title column (for checking off)
-            self.toggle_task_status(task_db_id)
-
-    def load_local_tasks(self):
-        """Loads tasks from the local database and populates the to-do list UI."""
-        for item in self.task_list.get_children():
-            self.task_list.delete(item)
-
-        tasks = self.send_db_command('get_tasks', expect_result=True)
-        
-        # Sort tasks: starred first, then by last modified
-        tasks.sort(key=lambda x: (not x[3], x[5]), reverse=True)
-
-        for task in tasks:
-            task_id, title, status, starred, _, _ = task
-            star_icon = "★" if starred else "☆"
-            
-            # Insert item into Treeview, using the database ID as a tag
-            item = self.task_list.insert("", "end", values=(star_icon, title), tags=(task_id,))
-            
-            if status == 'completed':
-                self.task_list.item(item, tags=(task_id, 'completed'))
-
-    def add_local_task(self, event=None):
-        """Adds a new task to the local database and updates the UI."""
-        title = self.new_task_var.get().strip()
-        if not title:
-            return
-
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        
-        self.send_db_command('insert_task', (title, timestamp), expect_result=False)
-        self.new_task_var.set("")
-        self.load_local_tasks()
-
-    def toggle_task_status(self, task_id):
-        """Toggles the status of a task between 'needsAction' and 'completed'."""
-        current_status = self.send_db_command('get_task_status', (task_id,), expect_result=True)
-        new_status = 'completed' if current_status == 'needsAction' else 'needsAction'
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-
-        self.send_db_command('update_task_status', (task_id, new_status, timestamp), expect_result=False)
-        self.load_local_tasks()
-
-    def toggle_task_starred(self, task_id):
-        """Toggles the starred status of a task."""
-        current_starred_val = self.send_db_command('get_task_starred', (task_id,), expect_result=True)
-        new_starred_val = 0 if current_starred_val == 1 else 1
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-
-        self.send_db_command('update_task_starred', (task_id, new_starred_val, timestamp), expect_result=False)
-        self.load_local_tasks()
         
     def authenticate_google_tasks(self):
         """Authenticates with Google Tasks API using OAuth 2.0."""
@@ -1279,7 +1373,7 @@ class WorkTracker:
             logging.error(f"An unexpected error occurred during sync: {e}", exc_info=True)
             ttk.dialogs.Messagebox.show_error(f"An unexpected error occurred during sync: {e}", "Sync Error")
 
-            
+
     def execute_google_api_call(self, api_call, max_retries=3, initial_backoff=1):
         """Executes a Google API call with exponential backoff for server errors."""
         for i in range(max_retries):
@@ -1515,7 +1609,7 @@ class WorkTracker:
             ttk.dialogs.Messagebox.show_error("Could not retrieve session details.", "Error")
             return
 
-        s_id, s_start_time_str, s_end_time_str, s_category, s_notes = session_details
+        s_id, s_start_time_str, s_end_time_str, s_category, s_notes, s_task_id = session_details
 
         edit_dialog = ttk.Toplevel(title=f"Edit Session ID: {s_id}")
         edit_dialog.transient(self.root)
@@ -1564,47 +1658,50 @@ class WorkTracker:
             new_end_time_str = self.edit_end_time_var.get().strip()
             new_category = self.edit_category_var.get()
             new_notes = self.edit_notes_text.get("1.0", tk.END).strip()
+            
+            # Retrieve the task ID. Assumes it's stored from edit_selected_session.
+            # If you have a UI element for it, retrieve from there instead.
+            new_task_id = getattr(self, '_temp_editing_task_id', None)
+            # You might want to get this from a UI element if it's editable
+            # e.g., self.edit_task_id_entry.get() and convert to int/None
 
-            new_start_time = None
-            new_end_time = None
-
-            # --- Robust Datetime Parsing ---
-            def parse_datetime_string(dt_str, field_name):
+            def parse_and_localize_datetime_string(dt_str, field_name):
                 if not dt_str:
                     return None
-                # Prefer dateutil.parser.parse if available, as it's very robust
-                if DATEUTIL_AVAILABLE:
-                    try:
-                        return date_parse(dt_str)
-                    except (ValueError, TypeError):
-                        pass # Fallback to manual parsing
-                
-                # Fallback 1: ISO format (handles timezone from database)
                 try:
-                    return datetime.datetime.fromisoformat(dt_str)
-                except ValueError:
-                    pass
+                    # Parse the string into a datetime object. date_parse (from dateutil.parser.parse) handles ISO formats and timezones.
+                    dt_obj = date_parse(dt_str)
+                    
+                    # If it's naive (no timezone info), localize it to local_tz, then convert to UTC
+                    if dt_obj.tzinfo is None or dt_obj.tzinfo.utcoffset(dt_obj) is None:
+                        # Get the local timezone (assuming self.time_zone is defined, e.g., 'America/New_York')
+                        local_tz = pytz.timezone(self.time_zone)
+                        
+                        # Localize the naive datetime to the local timezone
+                        local_dt = local_tz.localize(dt_obj)
+                        
+                        # Convert to UTC for consistency in database and comparisons
+                        utc_dt = local_dt.astimezone(pytz.utc)
+                    else:
+                        # If it's already timezone-aware, just convert to UTC
+                        utc_dt = dt_obj.astimezone(pytz.utc)
 
-                # Fallback 2: Formats without timezone
-                for fmt in ['%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S']:
-                    try:
-                        return datetime.datetime.strptime(dt_str, fmt)
-                    except ValueError:
-                        continue
-                
-                # If all parsing fails
-                ttk.dialogs.Messagebox.show_error(f"Invalid {field_name} format. Please use a recognized format like 'YYYY-MM-DD HH:MM:SS' or ISO 8601.", "Input Error")
-                return "error"
+                    return utc_dt
+                except Exception as e:
+                    logging.error(f"Error parsing and localizing {field_name} '{dt_str}': {e}")
+                    ttk.dialogs.Messagebox.show_error(f"Invalid {field_name} format. Please use a recognized format like 'YYYY-MM-DD HH:MM:SS' or ISO 8601.", "Input Error")
+                    return "error" # Special return to indicate error
 
-            new_start_time = parse_datetime_string(new_start_time_str, "Start Time")
-            if new_start_time == "error": return
-            if not new_start_time:
+            new_start_time = parse_and_localize_datetime_string(new_start_time_str, "Start Time")
+            if new_start_time == "error": return # Stop if parsing failed
+            if not new_start_time: # Start time cannot be empty
                 ttk.dialogs.Messagebox.show_error("Start Time cannot be empty.", "Input Error")
                 return
 
-            new_end_time = parse_datetime_string(new_end_time_str, "End Time")
-            if new_end_time == "error": return
+            new_end_time = parse_and_localize_datetime_string(new_end_time_str, "End Time")
+            if new_end_time == "error": return # Stop if parsing failed
             
+            # Now both new_start_time and new_end_time (if not None) are timezone-aware (UTC), so comparison works.
             if new_start_time and new_end_time and new_start_time > new_end_time:
                 ttk.dialogs.Messagebox.show_error("Start Time cannot be after End Time.", "Input Error")
                 return
@@ -1613,7 +1710,8 @@ class WorkTracker:
 
             success = self.send_db_command(
                 'update_full_session',
-                (session_id, new_start_time, new_end_time, db_category, new_notes),
+                # Ensure all 6 arguments are always present in the tuple
+                (session_id, new_start_time, new_end_time, db_category, new_notes, new_task_id),
                 expect_result=True
             )
 
@@ -1625,8 +1723,8 @@ class WorkTracker:
                 ttk.dialogs.Messagebox.show_error("Failed to update session.", "Error")
 
         except Exception as e:
-            logging.error(f"Error saving edited session: {e}", exc_info=True)
-            ttk.dialogs.Messagebox.show_error(f"An error occurred while saving changes: {e}", "Error")
+            logging.error(f"An unexpected error occurred while saving edited session: {e}", exc_info=True)
+            ttk.dialogs.Messagebox.show_error(f"An unexpected error occurred: {e}", "Error")
 
 
     def export_data(self):
@@ -1680,33 +1778,104 @@ class WorkTracker:
         category = self.history_category_var.get()
         search_text = self.history_search_text_var.get().strip()
 
-        start_date = None
-        end_date = None
+        start_date_str = None # Will store YYYY-MM-DD string
+        end_date_str = None   # Will store YYYY-MM-DD string
         now = datetime.datetime.now()
 
         if date_range == "Last 7 Days":
             start_date = now - datetime.timedelta(days=7)
+            start_date_str = start_date.strftime('%Y-%m-%d')
         elif date_range == "Last 30 Days":
             start_date = now - datetime.timedelta(days=30)
+            start_date_str = start_date.strftime('%Y-%m-%d')
         elif date_range == "This Month":
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            start_date_str = start_date.strftime('%Y-%m-%d')
         elif date_range == "This Year":
             start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            start_date_str = start_date.strftime('%Y-%m-%d')
+        
+        # If no specific end date is set, it implies up to 'now'.
+        # Your get_filtered_sessions already handles this.
 
+        # Handle category filter
+        filter_category = category if category != "All" else None
+
+        # Handle search text: Assume it's for notes for now.
+        # If it's meant to be a task_id, we need to convert.
+        filter_task_id = None
+        filter_notes_text = None # New variable for notes search
+
+        if search_text:
+            try:
+                # If search_text can be converted to an integer, assume it's a task_id
+                filter_task_id = int(search_text)
+            except ValueError:
+                # Otherwise, treat it as text to search within notes
+                filter_notes_text = search_text
+                # NOTE: Your get_filtered_sessions does NOT currently support searching by notes text.
+                # If this is intended, we'll need to modify the Database.get_filtered_sessions.
+                # For now, it will simply be ignored unless it's a valid task_id.
+                logging.warning(f"Search text '{search_text}' is not a valid task ID. Notes search not yet implemented.")
+
+
+        logging.debug(f"History filter - Start Date: {start_date_str}, End Date: {end_date_str}, Category: {filter_category}, Task ID: {filter_task_id}, Notes Search: {filter_notes_text}")
+
+        # Call get_filtered_sessions using the corrected string formats and filter_task_id/filter_category
+        # Note: Your current get_filtered_sessions in Database does not have a 'notes' parameter.
+        # So, filter_notes_text will be unused unless you update the DB method.
         sessions = self.send_db_command(
             'get_filtered_sessions',
-            (start_date, end_date, category, search_text),
+            (start_date_str, end_date_str, filter_category, filter_task_id),
             expect_result=True
         )
+        
+        # If get_filtered_sessions were to support notes search:
+        # sessions = self.send_db_command(
+        #     'get_filtered_sessions',
+        #     (start_date_str, end_date_str, filter_category, filter_task_id, filter_notes_text),
+        #     expect_result=True
+        # )
+
 
         if sessions:
             for session in sessions:
-                display_session = list(session)
-                if display_session[3] is None:
-                    display_session[3] = "Uncategorized"
-                self.history_tree.insert("", "end", values=display_session)
+                # session is a tuple like (id, start_time, end_time, category, notes, task_id)
+                session_id, start_time_str, end_time_str, category_name, notes, task_id = session
+
+                # Format times for display if needed (e.g., from ISO string to readable format)
+                # Ensure end_time is not None for display purposes, can show 'Ongoing'
+                display_end_time = end_time_str if end_time_str else "Ongoing"
+
+                # Fetch task title if task_id exists
+                task_title = "No Task"
+                if task_id is not None:
+                    # You would need a method like get_task_title(task_id) in your DB class
+                    # For now, we'll just show the ID or 'N/A'
+                    task_info = self.send_db_command('execute_query', 
+                                                     ("SELECT title FROM tasks WHERE id = ?", (task_id,),), 
+                                                     kwargs={'fetch': 'one'}, expect_result=True)
+                    if task_info:
+                        task_title = task_info[0]
+                    else:
+                        task_title = f"Task ID {task_id} (Not Found)"
+
+
+                display_values = (
+                    session_id,
+                    start_time_str.split('T')[0], # Show only date
+                    display_end_time.split('T')[0] if "T" in display_end_time else display_end_time, # Show only date
+                    category_name if category_name else "Uncategorized",
+                    task_title, # Show task title instead of raw task_id
+                    notes[:50] + "..." if len(notes) > 50 else notes # Truncate notes for display
+                )
+                self.history_tree.insert("", "end", values=display_values)
         else:
-            ttk.dialogs.Messagebox.show_info("No sessions found matching the filters.", "Work History")
+            # Changed from Messagebox to status bar update for less intrusive feedback
+            # ttk.dialogs.Messagebox.show_info("No sessions found matching the filters.", "Work History")
+            logging.info("No sessions found matching the history filters.")
+            # You might want to update a status bar or label here:
+            # self.status_bar_label.config(text="No sessions found.")
 
     def show_statistics(self):
         """Displays the statistics window."""
@@ -1714,7 +1883,7 @@ class WorkTracker:
             self.statistics_window.lift()
             return
 
-        self.statistics_window = ttk.Toplevel(title="Statistics")
+        self.statistics_window = ttk.Toplevel(master=self.root, title="Statistics") # Explicitly set master
         self.statistics_window.geometry("800x600")
 
         all_categories_from_db = self.send_db_command('get_all_categories', expect_result=True)
@@ -1753,23 +1922,31 @@ class WorkTracker:
 
         def update_stats():
             """Updates the statistics graph and scorecard."""
+            # These are correctly accessed as local variables
             view = view_var.get()
             category = category_var.get()
+
+            logging.debug(f"DEBUG: Entering update_stats (nested) for View: {view}, Category: {category}")
 
             daily_average = 0.0
 
             all_sessions_data = self.send_db_command('get_sessions', expect_result=True)
+            logging.debug(f"DEBUG: Retrieved {len(all_sessions_data) if all_sessions_data else 0} raw sessions from DB.")
 
             # Clear previous chart
+            # chart_frame is correctly accessed as a local variable
             for widget in chart_frame.winfo_children():
                 widget.destroy()
 
             if not all_sessions_data:
+                # ttk.dialogs.Messagebox is directly accessible if ttk is imported
                 ttk.dialogs.Messagebox.show_info("No data available for the selected filters.", "Statistics")
                 self.scorecard_label.config(text=f"Average Duration ({view}): 0 minutes")
                 return
 
-            df = pd.DataFrame(all_sessions_data, columns=["ID", "start_time", "end_time", "category", "notes"])
+            # --- CRITICAL FIX: Add 'task_id' to columns as get_sessions returns 6 columns ---
+            df = pd.DataFrame(all_sessions_data, columns=["ID", "start_time", "end_time", "category", "notes", "task_id"])
+            logging.debug(f"DEBUG: DataFrame created with {len(df)} rows and columns: {df.columns.tolist()}.")
 
             if df.empty:
                 ttk.dialogs.Messagebox.show_info("No data available for the selected filters (after DataFrame creation).", "Statistics")
@@ -1779,10 +1956,12 @@ class WorkTracker:
             # Data preparation - Use format='mixed' for robust datetime parsing and force UTC
             df['start_time'] = pd.to_datetime(df['start_time'], format='mixed', utc=True, errors='coerce')
             df['end_time'] = pd.to_datetime(df['end_time'], format='mixed', utc=True, errors='coerce')
+            logging.debug(f"DEBUG: After datetime conversion. NaT count (start_time): {df['start_time'].isna().sum()}, NaT count (end_time): {df['end_time'].isna().sum()}")
             
             # Filter out sessions where either start_time or end_time could not be parsed (are NaT)
             # or where end_time is missing (ongoing sessions)
             df_completed = df.dropna(subset=['start_time', 'end_time']).copy()
+            logging.debug(f"DEBUG: After dropping NaT/incomplete sessions, df_completed has {len(df_completed)} rows.")
             
             if df_completed.empty:
                 ttk.dialogs.Messagebox.show_info("No completed sessions to display for the selected filters.", "Statistics")
@@ -1790,11 +1969,12 @@ class WorkTracker:
                 return
 
             df_completed.loc[:, 'duration'] = (df_completed['end_time'] - df_completed['start_time']).dt.total_seconds() / 60
-
             df_completed.loc[:, 'category'] = df_completed['category'].fillna('Uncategorized')
+            logging.debug(f"DEBUG: After calculating duration and filling categories, df_completed has {len(df_completed)} rows.")
 
             if category != "All":
                 df_completed = df_completed[df_completed['category'] == category].copy()
+                logging.debug(f"DEBUG: After filtering by category '{category}', df_completed has {len(df_completed)} rows.")
                 if df_completed.empty:
                     ttk.dialogs.Messagebox.show_info("No completed sessions available for the selected category.", "Statistics")
                     self.scorecard_label.config(text=f"Average Duration ({view}): 0 minutes")
@@ -1807,10 +1987,12 @@ class WorkTracker:
             
             grouped = None
             y_axis_label = "Minutes" # Default label
+            df_filtered = pd.DataFrame() # Initialize to avoid UnboundLocalError
 
             if view == "Daily":
                 start_of_today_utc = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
                 df_filtered = df_completed[df_completed['start_time'] >= start_of_today_utc].copy()
+                logging.debug(f"DEBUG: Daily view filter: df_filtered has {len(df_filtered)} rows from start_of_today_utc: {start_of_today_utc}.")
                 if not df_filtered.empty:
                     df_filtered.loc[:, 'hour'] = df_filtered['start_time'].dt.hour
                     all_hours = list(range(24))
@@ -1823,6 +2005,7 @@ class WorkTracker:
                 start_of_week_utc = start_of_week_utc.replace(hour=0, minute=0, second=0, microsecond=0) # Ensure start of day
                 
                 df_filtered = df_completed[df_completed['start_time'] >= start_of_week_utc].copy()
+                logging.debug(f"DEBUG: Weekly view filter: df_filtered has {len(df_filtered)} rows from start_of_week_utc: {start_of_week_utc}.")
                 if not df_filtered.empty:
                     df_filtered.loc[:, 'day'] = df_filtered['start_time'].dt.day_name()
                     all_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -1833,6 +2016,7 @@ class WorkTracker:
                 # Start of month in UTC
                 start_of_month_utc = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
                 df_filtered = df_completed[(df_completed['start_time'] >= start_of_month_utc) & (df_completed['start_time'].dt.month == now_utc.month) & (df_completed['start_time'].dt.year == now_utc.year)].copy()
+                logging.debug(f"DEBUG: Monthly view filter: df_filtered has {len(df_filtered)} rows from start_of_month_utc: {start_of_month_utc}.")
                 if not df_filtered.empty:
                     df_filtered.loc[:, 'day'] = df_filtered['start_time'].dt.day
                     num_days_in_current_month = (now_utc.replace(month=now_utc.month % 12 + 1, day=1) - datetime.timedelta(days=1)).day
@@ -1844,12 +2028,20 @@ class WorkTracker:
                 # Start of year in UTC
                 start_of_year_utc = now_utc.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
                 df_filtered = df_completed[df_completed['start_time'] >= start_of_year_utc].copy()
+                logging.debug(f"DEBUG: Yearly view filter: df_filtered has {len(df_filtered)} rows from start_of_year_utc: {start_of_year_utc}.")
                 if not df_filtered.empty:
                     df_filtered.loc[:, 'month'] = df_filtered['start_time'].dt.month_name()
                     all_months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
                     grouped = df_filtered.groupby('month')['duration'].sum().reindex(all_months, fill_value=0)
                     daily_average = grouped.mean()
 
+            # --- Handle empty df_filtered or grouped BEFORE plotting ---
+            if df_filtered.empty or grouped is None or grouped.empty or grouped.sum() == 0:
+                logging.info(f"No data to plot for view '{view}' after time filtering. df_filtered empty: {df_filtered.empty}, grouped empty: {grouped is None or grouped.empty}, grouped sum: {grouped.sum() if grouped is not None else 'N/A'}")
+                ttk.dialogs.Messagebox.show_info("No work data to display for the selected period and category.", "Statistics")
+                self.scorecard_label.config(text=f"Average Duration ({view}): 0 minutes") # Reset to 0 minutes
+                return
+            
             # Ensure daily_average is not NaN if grouped is empty after reindex (e.g., no data for a given period)
             if pd.isna(daily_average):
                 daily_average = 0.0
@@ -1879,43 +2071,41 @@ class WorkTracker:
                 scorecard_text = f"{daily_average:.2f} minutes"
 
 
-            if grouped is not None and not grouped.empty and grouped.sum() > 0:
-                plt.style.use('dark_background')
-                fig, ax = plt.subplots(figsize=(8, 4))
-                
-                # Use ttkbootstrap colors
-                colors = self.root.style.colors
-                grouped.plot(kind='bar', ax=ax, color=colors.primary)
-                
-                ax.set_ylabel(y_axis_label, color=colors.fg)
-                ax.set_title(f"{view} Statistics for {category} Category", color=colors.fg)
-                
-                fig.patch.set_facecolor(colors.bg)
-                ax.set_facecolor(colors.bg)
-                
-                ax.tick_params(axis='x', colors=colors.fg)
-                ax.tick_params(axis='y', colors=colors.fg)
-                ax.spines['bottom'].set_color(colors.fg)
-                ax.spines['top'].set_color(colors.fg) 
-                ax.spines['right'].set_color(colors.fg)
-                ax.spines['left'].set_color(colors.fg)
+            plt.style.use('dark_background')
+            fig, ax = plt.subplots(figsize=(8, 4))
+            
+            # Use ttkbootstrap colors - self.root.style.colors is correct here
+            colors = self.root.style.colors
+            grouped.plot(kind='bar', ax=ax, color=colors.primary)
+            
+            ax.set_ylabel(y_axis_label, color=colors.fg)
+            ax.set_title(f"{view} Statistics for {category} Category", color=colors.fg)
+            
+            fig.patch.set_facecolor(colors.bg)
+            ax.set_facecolor(colors.bg)
+            
+            ax.tick_params(axis='x', colors=colors.fg)
+            ax.tick_params(axis='y', colors=colors.fg)
+            ax.spines['bottom'].set_color(colors.fg)
+            ax.spines['top'].set_color(colors.fg) 
+            ax.spines['right'].set_color(colors.fg)
+            ax.spines['left'].set_color(colors.fg)
 
-                fig.tight_layout()
+            fig.tight_layout()
 
-                canvas = FigureCanvasTkAgg(fig, master=chart_frame)
-                canvas.draw()
-                canvas.get_tk_widget().pack(expand=True, fill=BOTH)
-            else:
-                ttk.dialogs.Messagebox.show_info("No work data to display for the selected period and category.", "Statistics")
-                scorecard_text = "0 minutes" # Default back to minutes if no data
+            # chart_frame is correctly accessed as a local variable
+            canvas = FigureCanvasTkAgg(fig, master=chart_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(expand=True, fill=BOTH)
 
             self.scorecard_label.config(text=f"Average Duration ({view}): {scorecard_text}")
 
+        # Initial call to update stats when the window opens
         update_stats()
-        view_dropdown.bind("<<ComboboxSelected>>",
-                           lambda event: update_stats())
-        category_dropdown.bind("<<ComboboxSelected>>",
-                               lambda event: update_stats())
+        
+        # Bindings for dropdowns - these are correctly placed and reference the nested function
+        view_dropdown.bind("<<ComboboxSelected>>", lambda event: update_stats())
+        category_dropdown.bind("<<ComboboxSelected>>", lambda event: update_stats())
 
 
 class Database:
@@ -1944,10 +2134,15 @@ class Database:
 
         # --- Schema Creation ---
         self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS sessions(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                start_time TEXT, end_time TEXT, category TEXT, notes TEXT
-            )""")
+                CREATE TABLE IF NOT EXISTS sessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    start_time TEXT,
+                    end_time TEXT,
+                    category TEXT,
+                    notes TEXT,
+                    task_id INTEGER -- Ensure this line exists
+                )
+            """)
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS categories(
                 id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL
@@ -1959,7 +2154,8 @@ class Database:
             CREATE TABLE IF NOT EXISTS tasks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL,
                 status TEXT DEFAULT 'needsAction', starred INTEGER DEFAULT 0,
-                google_task_id TEXT, last_modified TEXT NOT NULL
+                google_task_id TEXT, last_modified TEXT NOT NULL,
+                deleted INTEGER DEFAULT 0
             )""")
         
         # --- Migration for 'deleted' column in tasks table ---
@@ -1968,6 +2164,13 @@ class Database:
         except sqlite3.OperationalError:
             logging.info("Older database schema detected. Adding 'deleted' column to tasks table.")
             self.cursor.execute("ALTER TABLE tasks ADD COLUMN deleted INTEGER DEFAULT 0")
+
+        # --- Migration for 'task_id' column in sessions table ---
+        try:
+            self.cursor.execute("SELECT task_id FROM sessions LIMIT 1")
+        except sqlite3.OperationalError:
+            logging.info("Older database schema detected. Adding 'task_id' column to sessions table.")
+            self.cursor.execute("ALTER TABLE sessions ADD COLUMN task_id INTEGER")
 
         self.conn.commit()
         logging.info("All tables and migrations checked/created.")
@@ -1992,20 +2195,31 @@ class Database:
                 return self.cursor.fetchone()
             if fetch == 'all':
                 return self.cursor.fetchall()
+            
             self.conn.commit()
-            return self.cursor.lastrowid
+            
+            # --- MODIFICATION START ---
+            # For INSERT, return lastrowid. For UPDATE/DELETE, return rowcount.
+            # Otherwise, return True for success, False for failure.
+            if query.strip().upper().startswith("INSERT"):
+                return self.cursor.lastrowid
+            elif query.strip().upper().startswith(("UPDATE", "DELETE")):
+                return self.cursor.rowcount
+            else: # For other DDL/DML statements that don't return rows or IDs
+                return True
+            # --- MODIFICATION END ---
+
         except Exception as e:
             logging.error(f"Database query failed: {query} with params {params}. Error: {e}")
             return None
 
     def get_tasks(self, include_deleted=False):
-        """Gets all tasks from the database."""
         query = "SELECT id, title, status, starred, google_task_id, last_modified FROM tasks"
         if not include_deleted:
             query += " WHERE deleted = 0"
         
         tasks = self.execute_query(query, fetch='all')
-        return tasks if tasks is not None else [] # Return empty list on failure
+        return tasks if tasks is not None else []
         
     def get_deleted_task_ids(self):
         return self.execute_query("SELECT google_task_id FROM tasks WHERE deleted = 1 AND google_task_id IS NOT NULL", fetch='all')
@@ -2020,7 +2234,7 @@ class Database:
         self.execute_query("UPDATE tasks SET google_task_id = ?, last_modified = ? WHERE id = ?", (google_task_id, last_modified, local_id))
 
     def update_task(self, local_id, title, status, starred, last_modified):
-        self.execute_query("UPDATE tasks SET title = ?, status = ?, starred = ?, last_modified = ? WHERE id = ?", (title, status, starred, last_modified, local_id))
+        self.execute_query("UPDATE tasks SET title = ?, status = ?, starred = ?, last_modified = ? WHERE id = ?, last_modified = ?", (title, status, starred, last_modified, local_id))
 
     def mark_task_deleted(self, task_id):
         self.execute_query("UPDATE tasks SET deleted = 1 WHERE id = ?", (task_id,))
@@ -2042,15 +2256,82 @@ class Database:
     def update_task_starred(self, task_id, starred, last_modified):
         self.execute_query("UPDATE tasks SET starred = ?, last_modified = ? WHERE id = ?", (starred, last_modified, task_id))
         
-    def insert_session(self, start_time, end_time, category, notes):
+    def insert_session(self, start_time, end_time, category, notes, task_id):
+        # Ensure datetime objects are converted to ISO format string and localized to UTC
         start_time_str = start_time.astimezone(datetime.timezone.utc).isoformat() if start_time else None
         end_time_str = end_time.astimezone(datetime.timezone.utc).isoformat() if end_time else None
-        return self.execute_query("INSERT INTO sessions (start_time, end_time, category, notes) VALUES (?,?,?,?)", (start_time_str, end_time_str, category, notes))
+        
+        # Use execute_query with the corrected parameters
+        return self.execute_query("INSERT INTO sessions (start_time, end_time, category, notes, task_id) VALUES (?,?,?,?,?)", 
+                                  (start_time_str, end_time_str, category, notes, task_id))
+
+    # In your Database class (e.g., in db.py)
 
     def update_session(self, session_id, end_time, notes):
+        # --- NEW LOGGING HERE ---
+        logging.debug(f"DEBUG: Entered update_session for ID: {session_id}")
+        # --- END NEW LOGGING ---
+        
         end_time_str = end_time.astimezone(datetime.timezone.utc).isoformat() if end_time else None
-        self.execute_query("UPDATE sessions SET end_time = ?, notes = ? WHERE id = ?", (end_time_str, notes, session_id))
+        
+        rows_affected = self.execute_query("UPDATE sessions SET end_time = ?, notes = ? WHERE id = ?", (end_time_str, notes, session_id))
+        
+        # --- NEW LOGGING HERE ---
+        logging.debug(f"DEBUG: update_session - execute_query returned rows_affected: {rows_affected}")
+        # --- END NEW LOGGING ---
 
+        if rows_affected == 1:
+            logging.info(f"Session ID {session_id} updated successfully (1 row affected).")
+            return True
+        elif rows_affected == 0:
+            logging.warning(f"Session ID {session_id} not found for update (0 rows affected). Check if ID exists.")
+            return False
+        else: # rows_affected is None or > 1 (shouldn't happen for WHERE id=?)
+            logging.error(f"Error updating session ID {session_id}. Rows affected: {rows_affected}")
+            return False
+
+    def get_session_by_id(self, session_id):
+        """Fetches a single session record by its ID."""
+        logging.debug(f"DEBUG: Attempting to fetch session with ID: {session_id}")
+        query = "SELECT id, start_time, end_time, category, notes, task_id FROM sessions WHERE id = ?"
+        result = self.execute_query(query, (session_id,), fetch='one')
+        
+        if result:
+            logging.debug(f"DEBUG: Session ID {session_id} found: {result}")
+        else:
+            logging.warning(f"WARNING: Session ID {session_id} not found.")
+        
+        return result
+    
+
+
+    def update_full_session(self, session_id, start_time, end_time, category, notes, task_id):
+        """Updates all fields of a session record by its ID."""
+        # Convert datetime objects to ISO format UTC strings for storage
+        start_time_str = start_time.astimezone(datetime.timezone.utc).isoformat() if start_time else None
+        end_time_str = end_time.astimezone(datetime.timezone.utc).isoformat() if end_time else None
+        
+        logging.debug(f"DEBUG: Attempting to update full session ID {session_id} with start: {start_time_str}, end: {end_time_str}, category: {category}, notes: {notes}, task_id: {task_id}")
+        
+        query = """
+            UPDATE sessions 
+            SET start_time = ?, end_time = ?, category = ?, notes = ?, task_id = ? 
+            WHERE id = ?
+        """
+        params = (start_time_str, end_time_str, category, notes, task_id, session_id)
+        
+        rows_affected = self.execute_query(query, params)
+        
+        if rows_affected == 1:
+            logging.info(f"Session ID {session_id} updated successfully (full update, 1 row affected).")
+            return True
+        elif rows_affected == 0:
+            logging.warning(f"WARNING: Session ID {session_id} not found for full update (0 rows affected).")
+            return False
+        else:
+            logging.error(f"ERROR: Unexpected number of rows affected during full session update for ID {session_id}: {rows_affected}")
+            return False
+    
     def get_all_categories(self):
         return [row[0] for row in self.execute_query("SELECT name FROM categories ORDER BY name", fetch='all')]
 
@@ -2078,6 +2359,58 @@ class Database:
     def set_setting(self, key, value):
         self.execute_query("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
         return True
+
+    def get_sessions(self, start_date=None, end_date=None):
+        """
+        Fetches all sessions, optionally filtered by date range.
+        Dates should be in 'YYYY-MM-DD' format.
+        """
+        query = "SELECT id, start_time, end_time, category, notes, task_id FROM sessions"
+        params = []
+        conditions = []
+
+        if start_date:
+            conditions.append("start_time >= ?")
+            params.append(start_date)
+        if end_date:
+            conditions.append("start_time <= ?")
+            params.append(end_date + " 23:59:59.999999") # Include entire end day
+
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        
+        query += " ORDER BY start_time DESC"
+        
+        return self.execute_query(query, params, fetch='all')
+
+    def get_filtered_sessions(self, start_date=None, end_date=None, category=None, task_id=None):
+        """
+        Fetches sessions based on various filters.
+        Dates should be in 'YYYY-MM-DD' format.
+        """
+        query = "SELECT id, start_time, end_time, category, notes, task_id FROM sessions"
+        params = []
+        conditions = []
+
+        if start_date:
+            conditions.append("start_time >= ?")
+            params.append(start_date)
+        if end_date:
+            conditions.append("start_time <= ?")
+            params.append(end_date + " 23:59:59.999999") # Include entire end day
+        if category:
+            conditions.append("category = ?")
+            params.append(category)
+        if task_id is not None: # Allow task_id to be 0 or None for filtering
+            conditions.append("task_id = ?")
+            params.append(task_id)
+
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        
+        query += " ORDER BY start_time DESC"
+        
+        return self.execute_query(query, params, fetch='all')
     
 
 if __name__ == "__main__":

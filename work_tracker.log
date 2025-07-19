@@ -1,74 +1,438 @@
-2025-07-13 16:44:13,161 - ERROR - Error saving authentication token: [Errno 2] No such file or directory: '/Users/adeoluwa/Library/Application Support/WorkTracker/token.json'
-2025-07-13 16:45:08,710 - ERROR - Error saving authentication token: [Errno 2] No such file or directory: '/Users/adeoluwa/Library/Application Support/WorkTracker/token.json'
-2025-07-13 17:06:47,503 - ERROR - Error sending data to Supabase table 'online_status': [Errno 54] Connection reset by peer
-Traceback (most recent call last):
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
-    yield
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 250, in handle_request
-    resp = self._pool.handle_request(req)
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
-    raise exc from None
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
-    response = connection.handle_request(
-        pool_request.request
-    )
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_sync/connection.py", line 101, in handle_request
-    raise exc
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_sync/connection.py", line 78, in handle_request
-    stream = self._connect(request)
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_sync/connection.py", line 156, in _connect
-    stream = stream.start_tls(**kwargs)
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_backends/sync.py", line 154, in start_tls
-    with map_exceptions(exc_map):
-         ~~~~~~~~~~~~~~^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 162, in __exit__
-    self.gen.throw(value)
-    ~~~~~~~~~~~~~~^^^^^^^
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
-    raise to_exc(exc) from exc
-httpcore.ConnectError: [Errno 54] Connection reset by peer
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/main.py", line 315, in _send_supabase_data
-    response = self.supabase_client.table(table_name).upsert(data).execute()
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 57, in execute
-    r = self.session.request(
-        self.http_method,
-    ...<3 lines>...
-        headers=self.headers,
-    )
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_client.py", line 825, in request
-    return self.send(request, auth=auth, follow_redirects=follow_redirects)
-           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_client.py", line 914, in send
-    response = self._send_handling_auth(
-        request,
-    ...<2 lines>...
-        history=[],
-    )
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_client.py", line 942, in _send_handling_auth
-    response = self._send_handling_redirects(
-        request,
-        follow_redirects=follow_redirects,
-        history=history,
-    )
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
-    response = self._send_single_request(request)
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_client.py", line 1014, in _send_single_request
-    response = transport.handle_request(request)
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 249, in handle_request
-    with map_httpcore_exceptions():
-         ~~~~~~~~~~~~~~~~~~~~~~~^^
-  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 162, in __exit__
-    self.gen.throw(value)
-    ~~~~~~~~~~~~~~^^^^^^^
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
-    raise mapped_exc(message) from exc
-httpx.ConnectError: [Errno 54] Connection reset by peer
-2025-07-13 17:06:47,515 - ERROR - Failed to send heartbeat to cloud.
-2025-07-13 17:37:16,672 - ERROR - Error sending data to Supabase table 'online_status': [Errno 60] Operation timed out
+2025-07-19 18:42:53,616 - INFO - Tray icon created successfully.
+2025-07-19 18:42:53,617 - INFO - WorkTracker application initialized.
+2025-07-19 18:42:53,706 - INFO - Database connected at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-19 18:42:53,708 - INFO - All tables and migrations checked/created.
+2025-07-19 18:42:53,708 - INFO - Database initialized at /Users/adeoluwa/WorkTracker/deep_work.db
+2025-07-19 18:42:53,855 - INFO - Supabase config loaded from: /Users/adeoluwa/Documents/WorkTrackerApp/config.json
+2025-07-19 18:42:53,855 - INFO - Attempting to initialize Supabase client.
+2025-07-19 18:42:53,855 - INFO - SUPABASE_URL (from config): 'https://guwfpjfhzpxeebxknxum.supabase.co'
+2025-07-19 18:42:53,855 - INFO - SUPABASE_KEY (from config): 'eyJhb...'
+2025-07-19 18:42:53,929 - INFO - Supabase client created successfully.
+2025-07-19 18:42:53,929 - DEBUG - DEBUG: send_db_command putting 'get_setting' with args: ('local_unique_user_id',)
+2025-07-19 18:42:53,929 - INFO - Supabase client initialized. Using local_unique_user_id: 831e6656-8e65-4dd8-915c-a9c379d9d82b
+2025-07-19 18:42:53,929 - DEBUG - DEBUG: send_db_command putting 'get_all_categories' with args: ()
+2025-07-19 18:42:54,004 - DEBUG - DEBUG: send_db_command putting 'get_setting' with args: ('default_category',)
+2025-07-19 18:42:54,004 - DEBUG - DEBUG: send_db_command putting 'get_all_categories' with args: ()
+2025-07-19 18:42:54,004 - INFO - No default category setting found or it's invalid.
+2025-07-19 18:42:54,104 - DEBUG - DEBUG: send_db_command putting 'get_setting' with args: ('display_name',)
+2025-07-19 18:42:54,104 - DEBUG - DEBUG: send_db_command putting 'get_setting' with args: ('local_unique_user_id',)
+2025-07-19 18:42:54,104 - INFO - Display name loaded: Dex
+2025-07-19 18:42:54,204 - DEBUG - DEBUG: send_db_command putting 'get_tasks' with args: ()
+2025-07-19 18:42:58,705 - INFO - Sending heartbeat: {'user_id': '831e6656-8e65-4dd8-915c-a9c379d9d82b', 'display_name': 'Dex', 'last_active_at': '2025-07-19T17:42:58.704804+00:00'}
+2025-07-19 18:42:58,729 - DEBUG - connect_tcp.started host='guwfpjfhzpxeebxknxum.supabase.co' port=443 local_address=None timeout=120 socket_options=None
+2025-07-19 18:42:58,896 - DEBUG - connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x1361982f0>
+2025-07-19 18:42:58,896 - DEBUG - start_tls.started ssl_context=<ssl.SSLContext object at 0x136190200> server_hostname='guwfpjfhzpxeebxknxum.supabase.co' timeout=120
+2025-07-19 18:42:59,165 - DEBUG - start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x136181590>
+2025-07-19 18:42:59,165 - DEBUG - send_connection_init.started request=<Request [b'POST']>
+2025-07-19 18:42:59,166 - DEBUG - send_connection_init.complete
+2025-07-19 18:42:59,166 - DEBUG - send_request_headers.started request=<Request [b'POST']> stream_id=1
+2025-07-19 18:42:59,166 - DEBUG - Adding (b':method', b'POST') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 3 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b':authority', b'guwfpjfhzpxeebxknxum.supabase.co') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 1 with 6 bits
+2025-07-19 18:42:59,166 - DEBUG - Encoding 24 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b':scheme', b'https') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 7 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b':path', b'/rest/v1/online_status') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 4 with 6 bits
+2025-07-19 18:42:59,166 - DEBUG - Encoding 16 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b'accept', b'*/*') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 19 with 6 bits
+2025-07-19 18:42:59,166 - DEBUG - Encoding 3 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b'accept-encoding', b'gzip, deflate') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 16 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b'user-agent', b'python-httpx/0.28.1') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 58 with 6 bits
+2025-07-19 18:42:59,166 - DEBUG - Encoding 14 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b'x-client-info', b'supabase-py/2.16.0') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 10 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Encoding 13 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b'apikey', b'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1d2ZwamZoenB4ZWVieGtueHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzcyNDEsImV4cCI6MjA2NzMxMzI0MX0.Eemd-jPu9aM556JZTYmN-UCRMCQ8eCLcHh2If2MFHKo') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 5 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Encoding 166 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b'authorization', b'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1d2ZwamZoenB4ZWVieGtueHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzcyNDEsImV4cCI6MjA2NzMxMzI0MX0.Eemd-jPu9aM556JZTYmN-UCRMCQ8eCLcHh2If2MFHKo') to the header table, sensitive:True, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 23 with 4 bits
+2025-07-19 18:42:59,166 - DEBUG - Encoding 171 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b'accept-profile', b'public') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 10 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Encoding 5 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b'content-profile', b'public') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 11 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Encoding 5 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b'prefer', b'return=representation,resolution=merge-duplicates') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 5 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Encoding 34 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b'content-length', b'123') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 28 with 6 bits
+2025-07-19 18:42:59,166 - DEBUG - Encoding 2 with 7 bits
+2025-07-19 18:42:59,166 - DEBUG - Adding (b'content-type', b'application/json') to the header table, sensitive:False, huffman:True
+2025-07-19 18:42:59,166 - DEBUG - Encoding 31 with 6 bits
+2025-07-19 18:42:59,167 - DEBUG - Encoding 11 with 7 bits
+2025-07-19 18:42:59,167 - DEBUG - Encoded header block to b'\x83A\x98\x9a\xdf\x12\xd7\xd2Y\xfd\xd7\xe4\xa5\x8f\xcfZ\xbc\xdbJ\xe8\xb6\xb1\xc64\x15r\x1f\x87D\x90b\xc2\xa1,w\x0b\x07\xaa\x83TX\x90\x91\xa6\xd4\x7fS\x83\xf9c\xe7\x90z\x8e\xaf\xd2g=KN\x94\xd7\xe5\x80.\'\x97\x0f@\x8a\xf2\xb1(1jJ\xc6\xaaS\xff\x8dE\xb5\x8e1\xa0\xabW\xe9\x81.\x17\x17\x07@\x85\x1df\xea__\xff\'/\xac\xb3\xc7\x88\x86\xd4l\xb98{\xc8\x1d&\xc8\x8c\x95ml\x97\xb29\x93\xad\x7f\x9coe}r\xfa\xcbY\x19\xd0mF\xcb\xeeO\xcb\xb3\xf3\xa7\x0f\xbf\xdd\xd9\x11\x92\xac\xb4~\x9b#\x99)\x902\x0b\xf7\xc0\xe9\xfd9j\xba\xd7\xef.&.$\xda\\|S\x90\xde\x0cJ_G\xee\xec\x8ed\xa7\r\xb1\x89\xa3g\xbd\x96\xbe\x7f\x9b\r\xab\xa6\x06t\xef\xc0\xce\x8fd\xf5\xa6\xfe\x04d\xa7\x8bD\xbd\x91\xcd\x1d!\x16\x9fz<\xe8\xf7\x90\x1a?\x00\xbe\x02\xd3"\xdd5\xda\xf8\xf46\xdb\x99\x7fw\xf3\xa7J\xdc/m\xd1{c\xc5\xbd\x9c\x98\xe7\x16IE\xa3\x0e<\xc7\x1f\x08\xff,\xbaQ\xd8[\x14/\xac\xb3\xc7\x88\x86\xd4l\xb98{\xc8\x1d&\xc8\x8c\x95ml\x97\xb29\x93\xad\x7f\x9coe}r\xfa\xcbY\x19\xd0mF\xcb\xeeO\xcb\xb3\xf3\xa7\x0f\xbf\xdd\xd9\x11\x92\xac\xb4~\x9b#\x99)\x902\x0b\xf7\xc0\xe9\xfd9j\xba\xd7\xef.&.$\xda\\|S\x90\xde\x0cJ_G\xee\xec\x8ed\xa7\r\xb1\x89\xa3g\xbd\x96\xbe\x7f\x9b\r\xab\xa6\x06t\xef\xc0\xce\x8fd\xf5\xa6\xfe\x04d\xa7\x8bD\xbd\x91\xcd\x1d!\x16\x9fz<\xe8\xf7\x90\x1a?\x00\xbe\x02\xd3"\xdd5\xda\xf8\xf46\xdb\x99\x7fw\xf3\xa7J\xdc/m\xd1{c\xc5\xbd\x9c\x98\xe7\x16IE\xa3\x0e<\xc7@\x8a\x19\x08Z\xd2\xb5v\x1eSP_\x85\xae\xd8\xe81?@\x8b!\xeaIjJ\xd5\xd8yMA\x7f\x85\xae\xd8\xe81?@\x85\xae\xc2\xca[?\xa2\xb0\xa9\xb6\xca\xa0\xb0\xb5\xd8T\x16\xa4\x8d&=_V\x15\x07\xa2\xd4\x98\xf5AIl\x98\xabImt\x18\x83IQ\\\x82\x08\x99_\x8b\x1du\xd0b\r&=LtA\xea'
+2025-07-19 18:42:59,167 - DEBUG - send_request_headers.complete
+2025-07-19 18:42:59,167 - DEBUG - send_request_body.started request=<Request [b'POST']> stream_id=1
+2025-07-19 18:42:59,167 - DEBUG - send_request_body.complete
+2025-07-19 18:42:59,167 - DEBUG - receive_response_headers.started request=<Request [b'POST']> stream_id=1
+2025-07-19 18:42:59,360 - DEBUG - receive_remote_settings.started
+2025-07-19 18:42:59,360 - DEBUG - receive_remote_settings.complete return_value=<RemoteSettingsChanged changed_settings:{ChangedSetting(setting=3, original_value=None, new_value=100), ChangedSetting(setting=4, original_value=65535, new_value=65536), ChangedSetting(setting=5, original_value=16384, new_value=16777215)}>
+2025-07-19 18:42:59,644 - DEBUG - Decoding b'?\xe1\x1f\x88a\x96\xdc4\xfd(\x17\xd4\xcbm\n\x08\x02m@\xbbq\xa1\\m\xf51h\xdf_\x96\x1du\xd0b\r&=LtA\xea\xfbP\x93\x8e\xc4\x150Z\x99V{^\x03*/*@\x85$\xabX?_\x8f}\xc0\x90\rFW#n7\x1f\x13\x8bg\xc9\xbb@\x8a$\xab\x10d\x9c\xab!#M\xa8\x86\xbf\xcfL:2^Z\x83\x9b\xd9\xabx\xa0\xa4~V\x1c\xc5\x81\x90\xb6\xcb\x80\x00>\xd45D\xa2\xd9\x0b\xba\xd8\xef\x9e\x91\x9a\xa4}\xa9]\x85\xa0\xe3\x93{\x8b\x84\x84-i[\x05D<\x86\xaao@\x8b!\xeaIjJ\xd5\xd8yMA\x7f\x85\xae\xd8\xe81?@\x8d\xae\xc2\xca[\x0bQ\n\xb0\xeb\xae\x83\x16O\xa3\xb0\xa8=\x16\xa4\xc7\xaa\nKd\xc5ZKk\xa0\xc4\x1aJ\x8f\xa5,*m\xb2\xa8,-v\x15\x05\xa9#I\x8fW@\x8dDkL4\x97\xc0\xfd-\xdc\xb6 \xc7\xab\x011@\x8aDkWa\xfa\x14\x89Z\xc2\xcb\x90\x9a\xdf\x12\xd7\xd2Y\xfd\xd7\xe4\xa5\x8f\xcfZ\xbc\xdbO@\x90\xf2\xb1\x0fRKRVO\xaa\xca\xb1\xebI\x8fR?\x85\xa8\xe8\xa8\xd2\xcb@\x8f\xf2\xb1j\xee\x7fK\r)-5\xa5b\x1e\xda\x93\x011@\x95\xf2\xb1j\xee\x7fK[Z\x13aGJ\xc8-\x9d\xccB\xac\x93R_\x0215w\xffV\x8a"K\x14t\xc1\xb3M\xb9]\x04\xf7\xf4\xf3\xb7Fa#^\xae\x1b/rs\xb7\rHgR\xfb8\xc7%\xe4;\xa6)\xff\x03\xcb\x82\xc1u\xb1>\xd3\x8f\xba\xfa\xc1\\\x0b\x85p\xac\x8e=[\xd9\x9a*\xdd\xd5\xdcQH\xd7H\xe8\x0e\x89.\xe5\x96\x9f\xc8\xec\xc7\xc7\xd2\x17,{[\'^\xe4s\x97\xe0\x93\xabw$]k\xac4\'ivk\xdc\xde\x97#>\xedq\xd4\xdb\xfd\xe3\xd5\xb7.\xbc\x92l\xe6\x9d\x8b\xbd]q\xe2\xbf\xd9\xf4^\xef9\t\x9b$4\xc5\x1e\xad\x9fjV4\xcf\x03\x1fj\x17\xcdf\xb0\xa8\x83p\xd3\xf4\xa0_[-\xb4,&\xd4\x0b\xd7\x02+\x8d\xbe\xa6-\x1b\xfe\xd4\x90\xf4\x8c\xd5@\xba-\xacq\x8d\x05\\\x87\xfbS\x1aS^\xaa\xa8\xf5\xf6\xa6\xe2\x92\xdb\x0b\xf6\xa6\xe1\xd2]\xc6I`\xd2z\x8bv\x87%\x07\xb6Ih\x1d\x85@\x85\x1d\tY\x1d\xc9\x90\x9d\x98?\x9b\x8d4\xcf\xf3\xf6\xa5#\x81\xe7\x1a\x00?'
+2025-07-19 18:42:59,644 - DEBUG - Decoded 4096, consumed 3 bytes
+2025-07-19 18:42:59,644 - DEBUG - Resizing header table to 4096 from 4096
+2025-07-19 18:42:59,644 - DEBUG - Decoded 8, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b':status', b'200'), consumed 1
+2025-07-19 18:42:59,644 - DEBUG - Decoded 33, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded 22, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b'date', b'Sat, 19 Jul 2025 17:42:59 GMT'), total consumed 24 bytes, indexed True
+2025-07-19 18:42:59,644 - DEBUG - Decoded 31, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded 22, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b'content-type', b'application/json; charset=utf-8'), total consumed 24 bytes, indexed True
+2025-07-19 18:42:59,644 - DEBUG - Decoded 30, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded 3, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b'content-range', <memory at 0x1361199c0>), total consumed 5 bytes, indexed True
+2025-07-19 18:42:59,644 - DEBUG - Decoded 5, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded 15, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b'cf-ray', b'961c04be6b5b6926-LIS'), total consumed 23 bytes, indexed True
+2025-07-19 18:42:59,644 - DEBUG - Decoded 10, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded 6, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b'cf-cache-status', b'DYNAMIC'), total consumed 19 bytes, indexed True
+2025-07-19 18:42:59,644 - DEBUG - Decoded 26, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded 3, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b'content-encoding', b'gzip'), total consumed 5 bytes, indexed True
+2025-07-19 18:42:59,644 - DEBUG - Decoded 56, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded 32, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b'strict-transport-security', b'max-age=31536000; includeSubDomains; preload'), total consumed 34 bytes, indexed True
+2025-07-19 18:42:59,644 - DEBUG - Decoded 59, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded 11, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b'vary', b'Accept-Encoding'), total consumed 13 bytes, indexed True
+2025-07-19 18:42:59,644 - DEBUG - Decoded 11, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded 5, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b'content-profile', b'public'), total consumed 19 bytes, indexed True
+2025-07-19 18:42:59,644 - DEBUG - Decoded 13, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded 35, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b'preference-applied', b'resolution=merge-duplicates, return=representation'), total consumed 51 bytes, indexed True
+2025-07-19 18:42:59,644 - DEBUG - Decoded 13, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded 1, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b'sb-gateway-version', <memory at 0x136119900>), total consumed 17 bytes, indexed True
+2025-07-19 18:42:59,644 - DEBUG - Decoded 10, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded 16, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b'sb-project-ref', b'guwfpjfhzpxeebxknxum'), total consumed 29 bytes, indexed True
+2025-07-19 18:42:59,644 - DEBUG - Decoded 16, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded 5, consumed 1 bytes
+2025-07-19 18:42:59,644 - DEBUG - Decoded (b'x-content-type-options', b'nosniff'), total consumed 24 bytes, indexed True
+2025-07-19 18:42:59,644 - DEBUG - Decoded 15, consumed 1 bytes
+2025-07-19 18:42:59,645 - DEBUG - Decoded 1, consumed 1 bytes
+2025-07-19 18:42:59,645 - DEBUG - Decoded (b'x-envoy-attempt-count', <memory at 0x1361196c0>), total consumed 19 bytes, indexed True
+2025-07-19 18:42:59,645 - DEBUG - Decoded 21, consumed 1 bytes
+2025-07-19 18:42:59,645 - DEBUG - Decoded 2, consumed 1 bytes
+2025-07-19 18:42:59,645 - DEBUG - Decoded (b'x-envoy-upstream-service-time', <memory at 0x136119c00>), total consumed 26 bytes, indexed True
+2025-07-19 18:42:59,645 - DEBUG - Decoded 55, consumed 1 bytes
+2025-07-19 18:42:59,645 - DEBUG - Decoded 213, consumed 2 bytes
+2025-07-19 18:42:59,645 - DEBUG - Decoded (b'set-cookie', b'__cf_bm=QNuJ70hDNYuMK2sPOUQCW6qUOs3O.QVbdCs7N_hX1WU-1752946979-1.0.1.1-sVk5QK_p7Ov2_d4jbl1MdBJfmXbrHVys.ebR5ckvc6WX2tOSWsB4kAltReQPS5N6boSPbn59vbORJPIdQYtQ.8ppbGDq9sCvhccKIAm_bOQ; path=/; expires=Sat, 19-Jul-25 18:12:59 GMT; domain=.supabase.co; HttpOnly; Secure; SameSite=None'), total consumed 216 bytes, indexed True
+2025-07-19 18:42:59,645 - DEBUG - Decoded 54, consumed 1 bytes
+2025-07-19 18:42:59,645 - DEBUG - Decoded 7, consumed 1 bytes
+2025-07-19 18:42:59,645 - DEBUG - Decoded (b'server', b'cloudflare'), total consumed 9 bytes, indexed True
+2025-07-19 18:42:59,645 - DEBUG - Decoded 5, consumed 1 bytes
+2025-07-19 18:42:59,645 - DEBUG - Decoded 16, consumed 1 bytes
+2025-07-19 18:42:59,645 - DEBUG - Decoded (b'alt-svc', b'h3=":443"; ma=86400'), total consumed 24 bytes, indexed True
+2025-07-19 18:42:59,645 - DEBUG - receive_response_headers.complete return_value=(200, [(b'date', b'Sat, 19 Jul 2025 17:42:59 GMT'), (b'content-type', b'application/json; charset=utf-8'), (b'content-range', b'*/*'), (b'cf-ray', b'961c04be6b5b6926-LIS'), (b'cf-cache-status', b'DYNAMIC'), (b'content-encoding', b'gzip'), (b'strict-transport-security', b'max-age=31536000; includeSubDomains; preload'), (b'vary', b'Accept-Encoding'), (b'content-profile', b'public'), (b'preference-applied', b'resolution=merge-duplicates, return=representation'), (b'sb-gateway-version', b'1'), (b'sb-project-ref', b'guwfpjfhzpxeebxknxum'), (b'x-content-type-options', b'nosniff'), (b'x-envoy-attempt-count', b'1'), (b'x-envoy-upstream-service-time', b'15'), (b'set-cookie', b'__cf_bm=QNuJ70hDNYuMK2sPOUQCW6qUOs3O.QVbdCs7N_hX1WU-1752946979-1.0.1.1-sVk5QK_p7Ov2_d4jbl1MdBJfmXbrHVys.ebR5ckvc6WX2tOSWsB4kAltReQPS5N6boSPbn59vbORJPIdQYtQ.8ppbGDq9sCvhccKIAm_bOQ; path=/; expires=Sat, 19-Jul-25 18:12:59 GMT; domain=.supabase.co; HttpOnly; Secure; SameSite=None'), (b'server', b'cloudflare'), (b'alt-svc', b'h3=":443"; ma=86400')])
+2025-07-19 18:42:59,646 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-19 18:42:59,646 - DEBUG - receive_response_body.started request=<Request [b'POST']> stream_id=1
+2025-07-19 18:42:59,646 - DEBUG - receive_response_body.complete
+2025-07-19 18:42:59,646 - DEBUG - response_closed.started stream_id=1
+2025-07-19 18:42:59,646 - DEBUG - response_closed.complete
+2025-07-19 18:42:59,650 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '831e6656-8e65-4dd8-915c-a9c379d9d82b', 'display_name': 'Dex', 'last_active_at': '2025-07-19T17:42:58.704804+00:00'}]
+2025-07-19 18:42:59,651 - INFO - Heartbeat sent to cloud successfully.
+2025-07-19 18:43:05,215 - DEBUG - DEBUG: send_db_command putting 'get_all_categories' with args: ()
+2025-07-19 18:43:05,220 - DEBUG - History filter - Start Date: None, End Date: None, Category: None, Task ID: None, Notes Search: None
+2025-07-19 18:43:05,220 - DEBUG - DEBUG: send_db_command putting 'get_filtered_sessions' with args: (None, None, None, None)
+2025-07-19 18:43:08,681 - DEBUG - DEBUG: send_db_command putting 'get_session_by_id' with args: ('14',)
+2025-07-19 18:43:08,681 - DEBUG - DEBUG: Attempting to fetch session with ID: 14
+2025-07-19 18:43:08,682 - DEBUG - DEBUG: Session ID 14 found: (14, '2025-07-19T13:05:03.217754+00:00', '2025-07-19T13:05:21.531809+00:00', 'School', '', None)
+2025-07-19 18:43:08,686 - DEBUG - DEBUG: send_db_command putting 'get_all_categories' with args: ()
+2025-07-19 18:43:14,514 - DEBUG - DEBUG: send_db_command putting 'get_session_by_id' with args: ('3',)
+2025-07-19 18:43:14,514 - DEBUG - DEBUG: Attempting to fetch session with ID: 3
+2025-07-19 18:43:14,515 - DEBUG - DEBUG: Session ID 3 found: (3, '2025-07-19T08:57:48.628347+00:00', '2025-07-19T08:58:25.300200+00:00', 'School', 'work tracker - resolving bugs', None)
+2025-07-19 18:43:14,518 - DEBUG - DEBUG: send_db_command putting 'get_all_categories' with args: ()
+2025-07-19 18:43:21,414 - DEBUG - DEBUG: send_db_command putting 'update_full_session' with args: (3, datetime.datetime(2025, 7, 19, 8, 57, 48, 628347, tzinfo=<UTC>), datetime.datetime(2025, 7, 19, 8, 58, 25, 300200, tzinfo=<UTC>), 'Skill', 'work tracker - resolving bugs', None)
+2025-07-19 18:43:21,414 - DEBUG - DEBUG: Attempting to update full session ID 3 with start: 2025-07-19T08:57:48.628347+00:00, end: 2025-07-19T08:58:25.300200+00:00, category: Skill, notes: work tracker - resolving bugs, task_id: None
+2025-07-19 18:43:21,415 - INFO - Session ID 3 updated successfully (full update, 1 row affected).
+2025-07-19 18:43:25,739 - DEBUG - History filter - Start Date: None, End Date: None, Category: None, Task ID: None, Notes Search: None
+2025-07-19 18:43:25,739 - DEBUG - DEBUG: send_db_command putting 'get_filtered_sessions' with args: (None, None, None, None)
+2025-07-19 18:43:29,651 - INFO - Sending heartbeat: {'user_id': '831e6656-8e65-4dd8-915c-a9c379d9d82b', 'display_name': 'Dex', 'last_active_at': '2025-07-19T17:43:29.651532+00:00'}
+2025-07-19 18:43:29,653 - DEBUG - close.started
+2025-07-19 18:43:29,654 - DEBUG - close.complete
+2025-07-19 18:43:29,655 - DEBUG - connect_tcp.started host='guwfpjfhzpxeebxknxum.supabase.co' port=443 local_address=None timeout=120 socket_options=None
+2025-07-19 18:43:29,821 - DEBUG - connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x136183390>
+2025-07-19 18:43:29,821 - DEBUG - start_tls.started ssl_context=<ssl.SSLContext object at 0x136190200> server_hostname='guwfpjfhzpxeebxknxum.supabase.co' timeout=120
+2025-07-19 18:43:30,051 - DEBUG - start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x1361ac770>
+2025-07-19 18:43:30,051 - DEBUG - send_connection_init.started request=<Request [b'POST']>
+2025-07-19 18:43:30,051 - DEBUG - send_connection_init.complete
+2025-07-19 18:43:30,051 - DEBUG - send_request_headers.started request=<Request [b'POST']> stream_id=1
+2025-07-19 18:43:30,051 - DEBUG - Adding (b':method', b'POST') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,051 - DEBUG - Encoding 3 with 7 bits
+2025-07-19 18:43:30,051 - DEBUG - Adding (b':authority', b'guwfpjfhzpxeebxknxum.supabase.co') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,051 - DEBUG - Encoding 1 with 6 bits
+2025-07-19 18:43:30,051 - DEBUG - Encoding 24 with 7 bits
+2025-07-19 18:43:30,051 - DEBUG - Adding (b':scheme', b'https') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,051 - DEBUG - Encoding 7 with 7 bits
+2025-07-19 18:43:30,051 - DEBUG - Adding (b':path', b'/rest/v1/online_status') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,052 - DEBUG - Encoding 4 with 6 bits
+2025-07-19 18:43:30,052 - DEBUG - Encoding 16 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Adding (b'accept', b'*/*') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,052 - DEBUG - Encoding 19 with 6 bits
+2025-07-19 18:43:30,052 - DEBUG - Encoding 3 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Adding (b'accept-encoding', b'gzip, deflate') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,052 - DEBUG - Encoding 16 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Adding (b'user-agent', b'python-httpx/0.28.1') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,052 - DEBUG - Encoding 58 with 6 bits
+2025-07-19 18:43:30,052 - DEBUG - Encoding 14 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Adding (b'x-client-info', b'supabase-py/2.16.0') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,052 - DEBUG - Encoding 10 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Encoding 13 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Adding (b'apikey', b'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1d2ZwamZoenB4ZWVieGtueHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzcyNDEsImV4cCI6MjA2NzMxMzI0MX0.Eemd-jPu9aM556JZTYmN-UCRMCQ8eCLcHh2If2MFHKo') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,052 - DEBUG - Encoding 5 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Encoding 166 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Adding (b'authorization', b'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1d2ZwamZoenB4ZWVieGtueHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzcyNDEsImV4cCI6MjA2NzMxMzI0MX0.Eemd-jPu9aM556JZTYmN-UCRMCQ8eCLcHh2If2MFHKo') to the header table, sensitive:True, huffman:True
+2025-07-19 18:43:30,052 - DEBUG - Encoding 23 with 4 bits
+2025-07-19 18:43:30,052 - DEBUG - Encoding 171 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Adding (b'accept-profile', b'public') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,052 - DEBUG - Encoding 10 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Encoding 5 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Adding (b'content-profile', b'public') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,052 - DEBUG - Encoding 11 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Encoding 5 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Adding (b'prefer', b'return=representation,resolution=merge-duplicates') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,052 - DEBUG - Encoding 5 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Encoding 34 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Adding (b'cookie', b'__cf_bm=QNuJ70hDNYuMK2sPOUQCW6qUOs3O.QVbdCs7N_hX1WU-1752946979-1.0.1.1-sVk5QK_p7Ov2_d4jbl1MdBJfmXbrHVys.ebR5ckvc6WX2tOSWsB4kAltReQPS5N6boSPbn59vbORJPIdQYtQ.8ppbGDq9sCvhccKIAm_bOQ') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,052 - DEBUG - Encoding 32 with 6 bits
+2025-07-19 18:43:30,052 - DEBUG - Encoding 140 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Adding (b'content-length', b'123') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,052 - DEBUG - Encoding 28 with 6 bits
+2025-07-19 18:43:30,052 - DEBUG - Encoding 2 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Adding (b'content-type', b'application/json') to the header table, sensitive:False, huffman:True
+2025-07-19 18:43:30,052 - DEBUG - Encoding 31 with 6 bits
+2025-07-19 18:43:30,052 - DEBUG - Encoding 11 with 7 bits
+2025-07-19 18:43:30,052 - DEBUG - Encoded header block to b'\x83A\x98\x9a\xdf\x12\xd7\xd2Y\xfd\xd7\xe4\xa5\x8f\xcfZ\xbc\xdbJ\xe8\xb6\xb1\xc64\x15r\x1f\x87D\x90b\xc2\xa1,w\x0b\x07\xaa\x83TX\x90\x91\xa6\xd4\x7fS\x83\xf9c\xe7\x90z\x8e\xaf\xd2g=KN\x94\xd7\xe5\x80.\'\x97\x0f@\x8a\xf2\xb1(1jJ\xc6\xaaS\xff\x8dE\xb5\x8e1\xa0\xabW\xe9\x81.\x17\x17\x07@\x85\x1df\xea__\xff\'/\xac\xb3\xc7\x88\x86\xd4l\xb98{\xc8\x1d&\xc8\x8c\x95ml\x97\xb29\x93\xad\x7f\x9coe}r\xfa\xcbY\x19\xd0mF\xcb\xeeO\xcb\xb3\xf3\xa7\x0f\xbf\xdd\xd9\x11\x92\xac\xb4~\x9b#\x99)\x902\x0b\xf7\xc0\xe9\xfd9j\xba\xd7\xef.&.$\xda\\|S\x90\xde\x0cJ_G\xee\xec\x8ed\xa7\r\xb1\x89\xa3g\xbd\x96\xbe\x7f\x9b\r\xab\xa6\x06t\xef\xc0\xce\x8fd\xf5\xa6\xfe\x04d\xa7\x8bD\xbd\x91\xcd\x1d!\x16\x9fz<\xe8\xf7\x90\x1a?\x00\xbe\x02\xd3"\xdd5\xda\xf8\xf46\xdb\x99\x7fw\xf3\xa7J\xdc/m\xd1{c\xc5\xbd\x9c\x98\xe7\x16IE\xa3\x0e<\xc7\x1f\x08\xff,\xbaQ\xd8[\x14/\xac\xb3\xc7\x88\x86\xd4l\xb98{\xc8\x1d&\xc8\x8c\x95ml\x97\xb29\x93\xad\x7f\x9coe}r\xfa\xcbY\x19\xd0mF\xcb\xeeO\xcb\xb3\xf3\xa7\x0f\xbf\xdd\xd9\x11\x92\xac\xb4~\x9b#\x99)\x902\x0b\xf7\xc0\xe9\xfd9j\xba\xd7\xef.&.$\xda\\|S\x90\xde\x0cJ_G\xee\xec\x8ed\xa7\r\xb1\x89\xa3g\xbd\x96\xbe\x7f\x9b\r\xab\xa6\x06t\xef\xc0\xce\x8fd\xf5\xa6\xfe\x04d\xa7\x8bD\xbd\x91\xcd\x1d!\x16\x9fz<\xe8\xf7\x90\x1a?\x00\xbe\x02\xd3"\xdd5\xda\xf8\xf46\xdb\x99\x7fw\xf3\xa7J\xdc/m\xd1{c\xc5\xbd\x9c\x98\xe7\x16IE\xa3\x0e<\xc7@\x8a\x19\x08Z\xd2\xb5v\x1eSP_\x85\xae\xd8\xe81?@\x8b!\xeaIjJ\xd5\xd8yMA\x7f\x85\xae\xd8\xe81?@\x85\xae\xc2\xca[?\xa2\xb0\xa9\xb6\xca\xa0\xb0\xb5\xd8T\x16\xa4\x8d&=_V\x15\x07\xa2\xd4\x98\xf5AIl\x98\xabImt\x18\x83IQ`\xff\r\x8a"K\x14t\xc1\xb3M\xb9]\x04\xf7\xf4\xf3\xb7Fa#^\xae\x1b/rs\xb7\rHgR\xfb8\xc7%\xe4;\xa6)\xff\x03\xcb\x82\xc1u\xb1>\xd3\x8f\xba\xfa\xc1\\\x0b\x85p\xac\x8e=[\xd9\x9a*\xdd\xd5\xdcQH\xd7H\xe8\x0e\x89.\xe5\x96\x9f\xc8\xec\xc7\xc7\xd2\x17,{[\'^\xe4s\x97\xe0\x93\xabw$]k\xac4\'ivk\xdc\xde\x97#>\xedq\xd4\xdb\xfd\xe3\xd5\xb7.\xbc\x92l\xe6\x9d\x8b\xbd]q\xe2\xbf\xd9\xf4^\xef9\t\x9b$4\xc5\x1e\xad\x9f\\\x82\x08\x99_\x8b\x1du\xd0b\r&=LtA\xea'
+2025-07-19 18:43:30,052 - DEBUG - send_request_headers.complete
+2025-07-19 18:43:30,052 - DEBUG - send_request_body.started request=<Request [b'POST']> stream_id=1
+2025-07-19 18:43:30,052 - DEBUG - send_request_body.complete
+2025-07-19 18:43:30,052 - DEBUG - receive_response_headers.started request=<Request [b'POST']> stream_id=1
+2025-07-19 18:43:30,226 - DEBUG - receive_remote_settings.started
+2025-07-19 18:43:30,226 - DEBUG - receive_remote_settings.complete return_value=<RemoteSettingsChanged changed_settings:{ChangedSetting(setting=3, original_value=None, new_value=100), ChangedSetting(setting=4, original_value=65535, new_value=65536), ChangedSetting(setting=5, original_value=16384, new_value=16777215)}>
+2025-07-19 18:43:30,289 - DEBUG - Decoding b'?\xe1\x1f\x88a\x96\xdc4\xfd(\x17\xd4\xcbm\n\x08\x02m@\xbbq\xa6n2\x051h\xdf_\x96\x1du\xd0b\r&=LtA\xea\xfbP\x93\x8e\xc4\x150Z\x99V{^\x03*/*@\x85$\xabX?_\x8f}\xc0\x90\r\xbb+OF@3!V\xcf\x93w@\x8a$\xab\x10d\x9c\xab!#M\xa8\x86\xbf\xcfL:2^Z\x83\x9b\xd9\xabx\xa0\xa4~V\x1c\xc5\x81\x90\xb6\xcb\x80\x00>\xd45D\xa2\xd9\x0b\xba\xd8\xef\x9e\x91\x9a\xa4}\xa9]\x85\xa0\xe3\x93{\x8b\x84\x84-i[\x05D<\x86\xaao@\x8b!\xeaIjJ\xd5\xd8yMA\x7f\x85\xae\xd8\xe81?@\x8d\xae\xc2\xca[\x0bQ\n\xb0\xeb\xae\x83\x16O\xa3\xb0\xa8=\x16\xa4\xc7\xaa\nKd\xc5ZKk\xa0\xc4\x1aJ\x8f\xa5,*m\xb2\xa8,-v\x15\x05\xa9#I\x8fW@\x8dDkL4\x97\xc0\xfd-\xdc\xb6 \xc7\xab\x011@\x8aDkWa\xfa\x14\x89Z\xc2\xcb\x90\x9a\xdf\x12\xd7\xd2Y\xfd\xd7\xe4\xa5\x8f\xcfZ\xbc\xdbO@\x90\xf2\xb1\x0fRKRVO\xaa\xca\xb1\xebI\x8fR?\x85\xa8\xe8\xa8\xd2\xcb@\x8f\xf2\xb1j\xee\x7fK\r)-5\xa5b\x1e\xda\x93\x011@\x95\xf2\xb1j\xee\x7fK[Z\x13aGJ\xc8-\x9d\xccB\xac\x93R_\x0215v\x87%\x07\xb6Ih\x1d\x85@\x85\x1d\tY\x1d\xc9\x90\x9d\x98?\x9b\x8d4\xcf\xf3\xf6\xa5#\x81\xe7\x1a\x00?'
+2025-07-19 18:43:30,289 - DEBUG - Decoded 4096, consumed 3 bytes
+2025-07-19 18:43:30,289 - DEBUG - Resizing header table to 4096 from 4096
+2025-07-19 18:43:30,289 - DEBUG - Decoded 8, consumed 1 bytes
+2025-07-19 18:43:30,289 - DEBUG - Decoded (b':status', b'200'), consumed 1
+2025-07-19 18:43:30,289 - DEBUG - Decoded 33, consumed 1 bytes
+2025-07-19 18:43:30,289 - DEBUG - Decoded 22, consumed 1 bytes
+2025-07-19 18:43:30,289 - DEBUG - Decoded (b'date', b'Sat, 19 Jul 2025 17:43:30 GMT'), total consumed 24 bytes, indexed True
+2025-07-19 18:43:30,289 - DEBUG - Decoded 31, consumed 1 bytes
+2025-07-19 18:43:30,289 - DEBUG - Decoded 22, consumed 1 bytes
+2025-07-19 18:43:30,289 - DEBUG - Decoded (b'content-type', b'application/json; charset=utf-8'), total consumed 24 bytes, indexed True
+2025-07-19 18:43:30,289 - DEBUG - Decoded 30, consumed 1 bytes
+2025-07-19 18:43:30,289 - DEBUG - Decoded 3, consumed 1 bytes
+2025-07-19 18:43:30,289 - DEBUG - Decoded (b'content-range', <memory at 0x13611a380>), total consumed 5 bytes, indexed True
+2025-07-19 18:43:30,289 - DEBUG - Decoded 5, consumed 1 bytes
+2025-07-19 18:43:30,289 - DEBUG - Decoded 15, consumed 1 bytes
+2025-07-19 18:43:30,289 - DEBUG - Decoded (b'cf-ray', b'961c057f48bc03de-LIS'), total consumed 23 bytes, indexed True
+2025-07-19 18:43:30,289 - DEBUG - Decoded 10, consumed 1 bytes
+2025-07-19 18:43:30,289 - DEBUG - Decoded 6, consumed 1 bytes
+2025-07-19 18:43:30,289 - DEBUG - Decoded (b'cf-cache-status', b'DYNAMIC'), total consumed 19 bytes, indexed True
+2025-07-19 18:43:30,289 - DEBUG - Decoded 26, consumed 1 bytes
+2025-07-19 18:43:30,289 - DEBUG - Decoded 3, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded (b'content-encoding', b'gzip'), total consumed 5 bytes, indexed True
+2025-07-19 18:43:30,290 - DEBUG - Decoded 56, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded 32, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded (b'strict-transport-security', b'max-age=31536000; includeSubDomains; preload'), total consumed 34 bytes, indexed True
+2025-07-19 18:43:30,290 - DEBUG - Decoded 59, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded 11, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded (b'vary', b'Accept-Encoding'), total consumed 13 bytes, indexed True
+2025-07-19 18:43:30,290 - DEBUG - Decoded 11, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded 5, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded (b'content-profile', b'public'), total consumed 19 bytes, indexed True
+2025-07-19 18:43:30,290 - DEBUG - Decoded 13, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded 35, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded (b'preference-applied', b'resolution=merge-duplicates, return=representation'), total consumed 51 bytes, indexed True
+2025-07-19 18:43:30,290 - DEBUG - Decoded 13, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded 1, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded (b'sb-gateway-version', <memory at 0x13611a440>), total consumed 17 bytes, indexed True
+2025-07-19 18:43:30,290 - DEBUG - Decoded 10, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded 16, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded (b'sb-project-ref', b'guwfpjfhzpxeebxknxum'), total consumed 29 bytes, indexed True
+2025-07-19 18:43:30,290 - DEBUG - Decoded 16, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded 5, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded (b'x-content-type-options', b'nosniff'), total consumed 24 bytes, indexed True
+2025-07-19 18:43:30,290 - DEBUG - Decoded 15, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded 1, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded (b'x-envoy-attempt-count', <memory at 0x13611a500>), total consumed 19 bytes, indexed True
+2025-07-19 18:43:30,290 - DEBUG - Decoded 21, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded 2, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded (b'x-envoy-upstream-service-time', <memory at 0x13611a5c0>), total consumed 26 bytes, indexed True
+2025-07-19 18:43:30,290 - DEBUG - Decoded 54, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded 7, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded (b'server', b'cloudflare'), total consumed 9 bytes, indexed True
+2025-07-19 18:43:30,290 - DEBUG - Decoded 5, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded 16, consumed 1 bytes
+2025-07-19 18:43:30,290 - DEBUG - Decoded (b'alt-svc', b'h3=":443"; ma=86400'), total consumed 24 bytes, indexed True
+2025-07-19 18:43:30,290 - DEBUG - receive_response_headers.complete return_value=(200, [(b'date', b'Sat, 19 Jul 2025 17:43:30 GMT'), (b'content-type', b'application/json; charset=utf-8'), (b'content-range', b'*/*'), (b'cf-ray', b'961c057f48bc03de-LIS'), (b'cf-cache-status', b'DYNAMIC'), (b'content-encoding', b'gzip'), (b'strict-transport-security', b'max-age=31536000; includeSubDomains; preload'), (b'vary', b'Accept-Encoding'), (b'content-profile', b'public'), (b'preference-applied', b'resolution=merge-duplicates, return=representation'), (b'sb-gateway-version', b'1'), (b'sb-project-ref', b'guwfpjfhzpxeebxknxum'), (b'x-content-type-options', b'nosniff'), (b'x-envoy-attempt-count', b'1'), (b'x-envoy-upstream-service-time', b'15'), (b'server', b'cloudflare'), (b'alt-svc', b'h3=":443"; ma=86400')])
+2025-07-19 18:43:30,290 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-19 18:43:30,290 - DEBUG - receive_response_body.started request=<Request [b'POST']> stream_id=1
+2025-07-19 18:43:30,296 - DEBUG - receive_response_body.complete
+2025-07-19 18:43:30,296 - DEBUG - response_closed.started stream_id=1
+2025-07-19 18:43:30,296 - DEBUG - response_closed.complete
+2025-07-19 18:43:30,297 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '831e6656-8e65-4dd8-915c-a9c379d9d82b', 'display_name': 'Dex', 'last_active_at': '2025-07-19T17:43:29.651532+00:00'}]
+2025-07-19 18:43:30,297 - INFO - Heartbeat sent to cloud successfully.
+2025-07-19 18:43:33,395 - DEBUG - DEBUG: send_db_command putting 'get_session_by_id' with args: ('10',)
+2025-07-19 18:43:33,395 - DEBUG - DEBUG: Attempting to fetch session with ID: 10
+2025-07-19 18:43:33,395 - DEBUG - DEBUG: Session ID 10 found: (10, '2025-07-19T12:50:20.227904+00:00', None, 'School', '', None)
+2025-07-19 18:43:33,399 - DEBUG - DEBUG: send_db_command putting 'get_all_categories' with args: ()
+2025-07-19 18:44:00,297 - INFO - Sending heartbeat: {'user_id': '831e6656-8e65-4dd8-915c-a9c379d9d82b', 'display_name': 'Dex', 'last_active_at': '2025-07-19T17:44:00.297432+00:00'}
+2025-07-19 18:44:00,298 - DEBUG - close.started
+2025-07-19 18:44:00,298 - DEBUG - close.complete
+2025-07-19 18:44:00,298 - DEBUG - connect_tcp.started host='guwfpjfhzpxeebxknxum.supabase.co' port=443 local_address=None timeout=120 socket_options=None
+2025-07-19 18:44:00,504 - DEBUG - connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x1361acd60>
+2025-07-19 18:44:00,505 - DEBUG - start_tls.started ssl_context=<ssl.SSLContext object at 0x136190200> server_hostname='guwfpjfhzpxeebxknxum.supabase.co' timeout=120
+2025-07-19 18:44:00,689 - DEBUG - start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x13619cb90>
+2025-07-19 18:44:00,689 - DEBUG - send_connection_init.started request=<Request [b'POST']>
+2025-07-19 18:44:00,689 - DEBUG - send_connection_init.complete
+2025-07-19 18:44:00,689 - DEBUG - send_request_headers.started request=<Request [b'POST']> stream_id=1
+2025-07-19 18:44:00,689 - DEBUG - Adding (b':method', b'POST') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,689 - DEBUG - Encoding 3 with 7 bits
+2025-07-19 18:44:00,689 - DEBUG - Adding (b':authority', b'guwfpjfhzpxeebxknxum.supabase.co') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,689 - DEBUG - Encoding 1 with 6 bits
+2025-07-19 18:44:00,689 - DEBUG - Encoding 24 with 7 bits
+2025-07-19 18:44:00,689 - DEBUG - Adding (b':scheme', b'https') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,689 - DEBUG - Encoding 7 with 7 bits
+2025-07-19 18:44:00,689 - DEBUG - Adding (b':path', b'/rest/v1/online_status') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,689 - DEBUG - Encoding 4 with 6 bits
+2025-07-19 18:44:00,689 - DEBUG - Encoding 16 with 7 bits
+2025-07-19 18:44:00,689 - DEBUG - Adding (b'accept', b'*/*') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,689 - DEBUG - Encoding 19 with 6 bits
+2025-07-19 18:44:00,689 - DEBUG - Encoding 3 with 7 bits
+2025-07-19 18:44:00,689 - DEBUG - Adding (b'accept-encoding', b'gzip, deflate') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,689 - DEBUG - Encoding 16 with 7 bits
+2025-07-19 18:44:00,689 - DEBUG - Adding (b'user-agent', b'python-httpx/0.28.1') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,689 - DEBUG - Encoding 58 with 6 bits
+2025-07-19 18:44:00,689 - DEBUG - Encoding 14 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Adding (b'x-client-info', b'supabase-py/2.16.0') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,690 - DEBUG - Encoding 10 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Encoding 13 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Adding (b'apikey', b'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1d2ZwamZoenB4ZWVieGtueHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzcyNDEsImV4cCI6MjA2NzMxMzI0MX0.Eemd-jPu9aM556JZTYmN-UCRMCQ8eCLcHh2If2MFHKo') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,690 - DEBUG - Encoding 5 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Encoding 166 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Adding (b'authorization', b'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1d2ZwamZoenB4ZWVieGtueHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzcyNDEsImV4cCI6MjA2NzMxMzI0MX0.Eemd-jPu9aM556JZTYmN-UCRMCQ8eCLcHh2If2MFHKo') to the header table, sensitive:True, huffman:True
+2025-07-19 18:44:00,690 - DEBUG - Encoding 23 with 4 bits
+2025-07-19 18:44:00,690 - DEBUG - Encoding 171 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Adding (b'accept-profile', b'public') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,690 - DEBUG - Encoding 10 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Encoding 5 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Adding (b'content-profile', b'public') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,690 - DEBUG - Encoding 11 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Encoding 5 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Adding (b'prefer', b'return=representation,resolution=merge-duplicates') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,690 - DEBUG - Encoding 5 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Encoding 34 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Adding (b'cookie', b'__cf_bm=QNuJ70hDNYuMK2sPOUQCW6qUOs3O.QVbdCs7N_hX1WU-1752946979-1.0.1.1-sVk5QK_p7Ov2_d4jbl1MdBJfmXbrHVys.ebR5ckvc6WX2tOSWsB4kAltReQPS5N6boSPbn59vbORJPIdQYtQ.8ppbGDq9sCvhccKIAm_bOQ') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,690 - DEBUG - Encoding 32 with 6 bits
+2025-07-19 18:44:00,690 - DEBUG - Encoding 140 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Adding (b'content-length', b'123') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,690 - DEBUG - Encoding 28 with 6 bits
+2025-07-19 18:44:00,690 - DEBUG - Encoding 2 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Adding (b'content-type', b'application/json') to the header table, sensitive:False, huffman:True
+2025-07-19 18:44:00,690 - DEBUG - Encoding 31 with 6 bits
+2025-07-19 18:44:00,690 - DEBUG - Encoding 11 with 7 bits
+2025-07-19 18:44:00,690 - DEBUG - Encoded header block to b'\x83A\x98\x9a\xdf\x12\xd7\xd2Y\xfd\xd7\xe4\xa5\x8f\xcfZ\xbc\xdbJ\xe8\xb6\xb1\xc64\x15r\x1f\x87D\x90b\xc2\xa1,w\x0b\x07\xaa\x83TX\x90\x91\xa6\xd4\x7fS\x83\xf9c\xe7\x90z\x8e\xaf\xd2g=KN\x94\xd7\xe5\x80.\'\x97\x0f@\x8a\xf2\xb1(1jJ\xc6\xaaS\xff\x8dE\xb5\x8e1\xa0\xabW\xe9\x81.\x17\x17\x07@\x85\x1df\xea__\xff\'/\xac\xb3\xc7\x88\x86\xd4l\xb98{\xc8\x1d&\xc8\x8c\x95ml\x97\xb29\x93\xad\x7f\x9coe}r\xfa\xcbY\x19\xd0mF\xcb\xeeO\xcb\xb3\xf3\xa7\x0f\xbf\xdd\xd9\x11\x92\xac\xb4~\x9b#\x99)\x902\x0b\xf7\xc0\xe9\xfd9j\xba\xd7\xef.&.$\xda\\|S\x90\xde\x0cJ_G\xee\xec\x8ed\xa7\r\xb1\x89\xa3g\xbd\x96\xbe\x7f\x9b\r\xab\xa6\x06t\xef\xc0\xce\x8fd\xf5\xa6\xfe\x04d\xa7\x8bD\xbd\x91\xcd\x1d!\x16\x9fz<\xe8\xf7\x90\x1a?\x00\xbe\x02\xd3"\xdd5\xda\xf8\xf46\xdb\x99\x7fw\xf3\xa7J\xdc/m\xd1{c\xc5\xbd\x9c\x98\xe7\x16IE\xa3\x0e<\xc7\x1f\x08\xff,\xbaQ\xd8[\x14/\xac\xb3\xc7\x88\x86\xd4l\xb98{\xc8\x1d&\xc8\x8c\x95ml\x97\xb29\x93\xad\x7f\x9coe}r\xfa\xcbY\x19\xd0mF\xcb\xeeO\xcb\xb3\xf3\xa7\x0f\xbf\xdd\xd9\x11\x92\xac\xb4~\x9b#\x99)\x902\x0b\xf7\xc0\xe9\xfd9j\xba\xd7\xef.&.$\xda\\|S\x90\xde\x0cJ_G\xee\xec\x8ed\xa7\r\xb1\x89\xa3g\xbd\x96\xbe\x7f\x9b\r\xab\xa6\x06t\xef\xc0\xce\x8fd\xf5\xa6\xfe\x04d\xa7\x8bD\xbd\x91\xcd\x1d!\x16\x9fz<\xe8\xf7\x90\x1a?\x00\xbe\x02\xd3"\xdd5\xda\xf8\xf46\xdb\x99\x7fw\xf3\xa7J\xdc/m\xd1{c\xc5\xbd\x9c\x98\xe7\x16IE\xa3\x0e<\xc7@\x8a\x19\x08Z\xd2\xb5v\x1eSP_\x85\xae\xd8\xe81?@\x8b!\xeaIjJ\xd5\xd8yMA\x7f\x85\xae\xd8\xe81?@\x85\xae\xc2\xca[?\xa2\xb0\xa9\xb6\xca\xa0\xb0\xb5\xd8T\x16\xa4\x8d&=_V\x15\x07\xa2\xd4\x98\xf5AIl\x98\xabImt\x18\x83IQ`\xff\r\x8a"K\x14t\xc1\xb3M\xb9]\x04\xf7\xf4\xf3\xb7Fa#^\xae\x1b/rs\xb7\rHgR\xfb8\xc7%\xe4;\xa6)\xff\x03\xcb\x82\xc1u\xb1>\xd3\x8f\xba\xfa\xc1\\\x0b\x85p\xac\x8e=[\xd9\x9a*\xdd\xd5\xdcQH\xd7H\xe8\x0e\x89.\xe5\x96\x9f\xc8\xec\xc7\xc7\xd2\x17,{[\'^\xe4s\x97\xe0\x93\xabw$]k\xac4\'ivk\xdc\xde\x97#>\xedq\xd4\xdb\xfd\xe3\xd5\xb7.\xbc\x92l\xe6\x9d\x8b\xbd]q\xe2\xbf\xd9\xf4^\xef9\t\x9b$4\xc5\x1e\xad\x9f\\\x82\x08\x99_\x8b\x1du\xd0b\r&=LtA\xea'
+2025-07-19 18:44:00,690 - DEBUG - send_request_headers.complete
+2025-07-19 18:44:00,690 - DEBUG - send_request_body.started request=<Request [b'POST']> stream_id=1
+2025-07-19 18:44:00,690 - DEBUG - send_request_body.complete
+2025-07-19 18:44:00,690 - DEBUG - receive_response_headers.started request=<Request [b'POST']> stream_id=1
+2025-07-19 18:44:00,869 - DEBUG - receive_remote_settings.started
+2025-07-19 18:44:00,869 - DEBUG - receive_remote_settings.complete return_value=<RemoteSettingsChanged changed_settings:{ChangedSetting(setting=3, original_value=None, new_value=100), ChangedSetting(setting=4, original_value=65535, new_value=65536), ChangedSetting(setting=5, original_value=16384, new_value=16777215)}>
+2025-07-19 18:44:01,038 - DEBUG - Decoding b'?\xe1\x1f\x88a\x96\xdc4\xfd(\x17\xd4\xcbm\n\x08\x02m@\xbbq\xa6\xae\x00*b\xd1\xbf_\x96\x1du\xd0b\r&=LtA\xea\xfbP\x93\x8e\xc4\x150Z\x99V{^\x03*/*@\x85$\xabX?_\x8f}\xc0\x90\x0e2R\x11\xd1\x06I^[>M\xdf@\x8a$\xab\x10d\x9c\xab!#M\xa8\x86\xbf\xcfL:2^Z\x83\x9b\xd9\xabx\xa0\xa4~V\x1c\xc5\x81\x90\xb6\xcb\x80\x00>\xd45D\xa2\xd9\x0b\xba\xd8\xef\x9e\x91\x9a\xa4}\xa9]\x85\xa0\xe3\x93{\x8b\x84\x84-i[\x05D<\x86\xaao@\x8b!\xeaIjJ\xd5\xd8yMA\x7f\x85\xae\xd8\xe81?@\x8d\xae\xc2\xca[\x0bQ\n\xb0\xeb\xae\x83\x16O\xa3\xb0\xa8=\x16\xa4\xc7\xaa\nKd\xc5ZKk\xa0\xc4\x1aJ\x8f\xa5,*m\xb2\xa8,-v\x15\x05\xa9#I\x8fW@\x8dDkL4\x97\xc0\xfd-\xdc\xb6 \xc7\xab\x011@\x8aDkWa\xfa\x14\x89Z\xc2\xcb\x90\x9a\xdf\x12\xd7\xd2Y\xfd\xd7\xe4\xa5\x8f\xcfZ\xbc\xdbO@\x90\xf2\xb1\x0fRKRVO\xaa\xca\xb1\xebI\x8fR?\x85\xa8\xe8\xa8\xd2\xcb@\x8f\xf2\xb1j\xee\x7fK\r)-5\xa5b\x1e\xda\x93\x011@\x95\xf2\xb1j\xee\x7fK[Z\x13aGJ\xc8-\x9d\xccB\xac\x93R_\x0215v\x87%\x07\xb6Ih\x1d\x85@\x85\x1d\tY\x1d\xc9\x90\x9d\x98?\x9b\x8d4\xcf\xf3\xf6\xa5#\x81\xe7\x1a\x00?'
+2025-07-19 18:44:01,038 - DEBUG - Decoded 4096, consumed 3 bytes
+2025-07-19 18:44:01,038 - DEBUG - Resizing header table to 4096 from 4096
+2025-07-19 18:44:01,038 - DEBUG - Decoded 8, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b':status', b'200'), consumed 1
+2025-07-19 18:44:01,038 - DEBUG - Decoded 33, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 22, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'date', b'Sat, 19 Jul 2025 17:44:01 GMT'), total consumed 24 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 31, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 22, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'content-type', b'application/json; charset=utf-8'), total consumed 24 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 30, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 3, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'content-range', <memory at 0x13611a2c0>), total consumed 5 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 5, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 15, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'cf-ray', b'961c063ecc721df8-LIS'), total consumed 23 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 10, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 6, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'cf-cache-status', b'DYNAMIC'), total consumed 19 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 26, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 3, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'content-encoding', b'gzip'), total consumed 5 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 56, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 32, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'strict-transport-security', b'max-age=31536000; includeSubDomains; preload'), total consumed 34 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 59, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 11, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'vary', b'Accept-Encoding'), total consumed 13 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 11, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 5, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'content-profile', b'public'), total consumed 19 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 13, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 35, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'preference-applied', b'resolution=merge-duplicates, return=representation'), total consumed 51 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 13, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 1, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'sb-gateway-version', <memory at 0x13611a800>), total consumed 17 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 10, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 16, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'sb-project-ref', b'guwfpjfhzpxeebxknxum'), total consumed 29 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 16, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 5, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'x-content-type-options', b'nosniff'), total consumed 24 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 15, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 1, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'x-envoy-attempt-count', <memory at 0x13611a740>), total consumed 19 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 21, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 2, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'x-envoy-upstream-service-time', <memory at 0x13611a8c0>), total consumed 26 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 54, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 7, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'server', b'cloudflare'), total consumed 9 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - Decoded 5, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded 16, consumed 1 bytes
+2025-07-19 18:44:01,038 - DEBUG - Decoded (b'alt-svc', b'h3=":443"; ma=86400'), total consumed 24 bytes, indexed True
+2025-07-19 18:44:01,038 - DEBUG - receive_response_headers.complete return_value=(200, [(b'date', b'Sat, 19 Jul 2025 17:44:01 GMT'), (b'content-type', b'application/json; charset=utf-8'), (b'content-range', b'*/*'), (b'cf-ray', b'961c063ecc721df8-LIS'), (b'cf-cache-status', b'DYNAMIC'), (b'content-encoding', b'gzip'), (b'strict-transport-security', b'max-age=31536000; includeSubDomains; preload'), (b'vary', b'Accept-Encoding'), (b'content-profile', b'public'), (b'preference-applied', b'resolution=merge-duplicates, return=representation'), (b'sb-gateway-version', b'1'), (b'sb-project-ref', b'guwfpjfhzpxeebxknxum'), (b'x-content-type-options', b'nosniff'), (b'x-envoy-attempt-count', b'1'), (b'x-envoy-upstream-service-time', b'15'), (b'server', b'cloudflare'), (b'alt-svc', b'h3=":443"; ma=86400')])
+2025-07-19 18:44:01,039 - INFO - HTTP Request: POST https://guwfpjfhzpxeebxknxum.supabase.co/rest/v1/online_status "HTTP/2 200 OK"
+2025-07-19 18:44:01,039 - DEBUG - receive_response_body.started request=<Request [b'POST']> stream_id=1
+2025-07-19 18:44:01,046 - DEBUG - receive_response_body.complete
+2025-07-19 18:44:01,046 - DEBUG - response_closed.started stream_id=1
+2025-07-19 18:44:01,046 - DEBUG - response_closed.complete
+2025-07-19 18:44:01,046 - INFO - Data successfully upserted to Supabase table 'online_status': [{'user_id': '831e6656-8e65-4dd8-915c-a9c379d9d82b', 'display_name': 'Dex', 'last_active_at': '2025-07-19T17:44:00.297432+00:00'}]
+2025-07-19 18:44:01,046 - INFO - Heartbeat sent to cloud successfully.
+2025-07-19 18:44:08,861 - DEBUG - DEBUG: send_db_command putting 'update_full_session' with args: (10, datetime.datetime(2025, 7, 19, 12, 50, 20, 227904, tzinfo=<UTC>), datetime.datetime(2025, 7, 19, 17, 50, 20, 227904, tzinfo=<UTC>), 'School', '', None)
+2025-07-19 18:44:08,862 - DEBUG - DEBUG: Attempting to update full session ID 10 with start: 2025-07-19T12:50:20.227904+00:00, end: 2025-07-19T17:50:20.227904+00:00, category: School, notes: , task_id: None
+2025-07-19 18:44:08,863 - INFO - Session ID 10 updated successfully (full update, 1 row affected).
+2025-07-19 18:44:12,004 - DEBUG - History filter - Start Date: None, End Date: None, Category: None, Task ID: None, Notes Search: None
+2025-07-19 18:44:12,004 - DEBUG - DEBUG: send_db_command putting 'get_filtered_sessions' with args: (None, None, None, None)
+2025-07-19 18:44:21,130 - DEBUG - DEBUG: send_db_command putting 'get_session_by_id' with args: ('13',)
+2025-07-19 18:44:21,130 - DEBUG - DEBUG: Attempting to fetch session with ID: 13
+2025-07-19 18:44:21,130 - DEBUG - DEBUG: Session ID 13 found: (13, '2025-07-19T12:58:11.261612+00:00', '2025-07-19T12:59:54.305126+00:00', 'School', '', None)
+2025-07-19 18:44:21,134 - DEBUG - DEBUG: send_db_command putting 'get_all_categories' with args: ()
+2025-07-19 18:44:30,329 - DEBUG - DEBUG: send_db_command putting 'get_session_by_id' with args: ('6',)
+2025-07-19 18:44:30,329 - DEBUG - DEBUG: Attempting to fetch session with ID: 6
+2025-07-19 18:44:30,330 - DEBUG - DEBUG: Session ID 6 found: (6, '2025-07-19T12:34:14.703478+00:00', '2025-07-19T12:34:32.087639+00:00', 'School', 'work tracker - resolving bugs', None)
+2025-07-19 18:44:30,333 - DEBUG - DEBUG: send_db_command putting 'get_all_categories' with args: ()
+2025-07-19 18:44:31,047 - INFO - Sending heartbeat: {'user_id': '831e6656-8e65-4dd8-915c-a9c379d9d82b', 'display_name': 'Dex', 'last_active_at': '2025-07-19T17:44:31.047117+00:00'}
+2025-07-19 18:44:31,047 - DEBUG - close.started
+2025-07-19 18:44:31,047 - DEBUG - close.complete
+2025-07-19 18:44:31,047 - DEBUG - connect_tcp.started host='guwfpjfhzpxeebxknxum.supabase.co' port=443 local_address=None timeout=120 socket_options=None
+2025-07-19 18:45:46,047 - DEBUG - connect_tcp.failed exception=ConnectTimeout(TimeoutError(60, 'Operation timed out'))
+2025-07-19 18:45:46,049 - ERROR - Error sending data to Supabase table 'online_status': [Errno 60] Operation timed out
 Traceback (most recent call last):
   File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
     yield
@@ -99,7 +463,7 @@ httpcore.ConnectTimeout: [Errno 60] Operation timed out
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/adeoluwa/Documents/WorkTrackerApp/main.py", line 315, in _send_supabase_data
+  File "/Users/adeoluwa/Documents/WorkTrackerApp/main.py", line 327, in _send_supabase_data
     response = self.supabase_client.table(table_name).upsert(data).execute()
   File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 57, in execute
     r = self.session.request(
@@ -135,19 +499,4 @@ Traceback (most recent call last):
   File "/Users/adeoluwa/Documents/WorkTrackerApp/work_tracker_venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
     raise mapped_exc(message) from exc
 httpx.ConnectTimeout: [Errno 60] Operation timed out
-2025-07-13 17:37:16,680 - ERROR - Failed to send heartbeat to cloud.
-2025-07-13 19:00:38,965 - ERROR - Unknown database operation: get_deleted_task_ids
-2025-07-13 19:00:39,642 - ERROR - Unknown database operation: update_task_with_google_id
-2025-07-13 19:00:39,932 - ERROR - Unknown database operation: update_task_with_google_id
-2025-07-13 19:00:39,932 - ERROR - Database operation 'insert_task' failed: Database.insert_task() takes 3 positional arguments but 5 were given
-2025-07-13 19:00:39,932 - ERROR - Database operation 'insert_task' failed: Database.insert_task() takes 3 positional arguments but 5 were given
-2025-07-13 19:00:39,932 - ERROR - Database operation 'insert_task' failed: Database.insert_task() takes 3 positional arguments but 5 were given
-2025-07-13 19:00:39,932 - ERROR - Database operation 'insert_task' failed: Database.insert_task() takes 3 positional arguments but 5 were given
-2025-07-13 19:00:39,932 - ERROR - Database operation 'insert_task' failed: Database.insert_task() takes 3 positional arguments but 5 were given
-2025-07-13 19:00:39,932 - ERROR - Database operation 'insert_task' failed: Database.insert_task() takes 3 positional arguments but 5 were given
-2025-07-13 19:00:39,932 - ERROR - Database operation 'insert_task' failed: Database.insert_task() takes 3 positional arguments but 5 were given
-2025-07-13 19:00:39,932 - ERROR - Database operation 'insert_task' failed: Database.insert_task() takes 3 positional arguments but 5 were given
-2025-07-13 19:00:39,932 - ERROR - Database operation 'insert_task' failed: Database.insert_task() takes 3 positional arguments but 5 were given
-2025-07-13 19:00:39,932 - ERROR - Database operation 'insert_task' failed: Database.insert_task() takes 3 positional arguments but 5 were given
-2025-07-13 19:23:54,929 - ERROR - Database query failed: SELECT id, title, status, starred, google_task_id, last_modified FROM tasks WHERE deleted = 0 with params (). Error: no such column: deleted
-2025-07-13 19:44:18,376 - ERROR - Failed to create new task on Google: <HttpError 503 when requesting https://tasks.googleapis.com/tasks/v1/lists/MTQwMDg5NzA2MTg5NDM5MDkzMDQ6MDow/tasks?alt=json returned "The service is currently unavailable.". Details: "[{'message': 'The service is currently unavailable.', 'domain': 'global', 'reason': 'backendError'}]">
+2025-07-19 18:45:46,060 - ERROR - Failed to send heartbeat to cloud.
